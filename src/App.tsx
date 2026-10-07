@@ -6,6 +6,7 @@ import JournalPage from './pages/Journal'
 import AccountsPage from './pages/Accounts'
 import ContactsPage from './pages/Contacts'
 import ReportsPage from './pages/Reports'
+import VouchersPage from './pages/Vouchers'
 import SettingsPage from './pages/Settings'
 import Login from "./pages/Login"
 import NotFound from "./pages/NotFound"
@@ -15,6 +16,7 @@ export default function App() {
     <>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/vouchers" element={<VouchersPage />} />
         <Route path="/transactions" element={<TransactionsPage />} />
         <Route path="/journal" element={<JournalPage />} />
         <Route path="/accounts" element={<AccountsPage />} />

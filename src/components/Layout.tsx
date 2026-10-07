@@ -13,6 +13,7 @@ import {
   Globe,
   Users,
   FileSpreadsheet,
+  FileText,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -27,6 +28,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const NAV = [
   { path: "/", arLabel: "الرئيسية", enLabel: "Dashboard", icon: Home },
+  { path: "/vouchers", arLabel: "سندات القبض والصرف", enLabel: "Vouchers", icon: FileText },
   { path: "/transactions", arLabel: "الحركات", enLabel: "Transactions", icon: Receipt },
   { path: "/journal", arLabel: "القيود", enLabel: "Journal", icon: BookOpen },
   { path: "/accounts", arLabel: "الحسابات", enLabel: "Accounts", icon: Wallet },

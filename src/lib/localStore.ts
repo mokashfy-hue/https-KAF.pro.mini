@@ -76,6 +76,22 @@ export interface LocalTransfer {
   userId: number;
 }
 
+export interface LocalVoucher {
+  id: number;
+  number: string;
+  type: "receipt" | "payment";
+  date: string;
+  amount: string;
+  contactId?: number | null;
+  contactName?: string;
+  accountId: number;
+  paymentMethod: "cash" | "transfer" | "cheque" | "card";
+  referenceNo?: string;
+  description: string;
+  receivedBy?: string;
+  createdAt: string;
+}
+
 export interface LocalDatabase {
   user: {
     id: number;
@@ -87,6 +103,7 @@ export interface LocalDatabase {
   company: CompanyInfo;
   accounts: LocalAccount[];
   contacts: LocalContact[];
+  vouchers: LocalVoucher[];
   transactions: LocalTransaction[];
   journalEntries: LocalJournalEntry[];
   transfers: LocalTransfer[];
@@ -168,6 +185,69 @@ const DEFAULT_ACCOUNTS: LocalAccount[] = [
   { id: 7, name: "المصروفات التشغيلية", code: "501", type: "expense", color: "#ef4444", userId: 1 },
 ];
 
+const DEFAULT_VOUCHERS: LocalVoucher[] = [
+  {
+    id: 1,
+    number: "RV-001",
+    type: "receipt",
+    date: "2026-10-01",
+    amount: "15000.00",
+    contactId: 1,
+    contactName: "مؤسسة الأفق للتجارة والمقاولات",
+    accountId: 1,
+    paymentMethod: "cash",
+    referenceNo: "REC-7891",
+    description: "استلام دفعة نقدية عهدة مشروع",
+    receivedBy: "مكاشفي",
+    createdAt: "2026-10-01",
+  },
+  {
+    id: 2,
+    number: "RV-002",
+    type: "receipt",
+    date: "2026-10-02",
+    amount: "38500.00",
+    contactId: 2,
+    contactName: "شركة نماء الخليج للتطوير والاستثمار",
+    accountId: 2,
+    paymentMethod: "transfer",
+    referenceNo: "TR-445588",
+    description: "سداد دفعة العقد الاستشاري الأول",
+    receivedBy: "مكاشفي",
+    createdAt: "2026-10-02",
+  },
+  {
+    id: 3,
+    number: "PV-001",
+    type: "payment",
+    date: "2026-10-04",
+    amount: "8200.00",
+    contactId: 3,
+    contactName: "شركة التجهيزات والتقنية المتقدمة",
+    accountId: 2,
+    paymentMethod: "transfer",
+    referenceNo: "PAY-1102",
+    description: "سداد فاتورة توريد أجهزة مكتبية وشبكات",
+    receivedBy: "مكاشفي",
+    createdAt: "2026-10-04",
+  },
+  {
+    id: 4,
+    number: "PV-002",
+    type: "payment",
+    date: "2026-10-05",
+    amount: "2500.00",
+    contactId: 4,
+    contactName: "مكتب المستشار للخدمات القانونية",
+    accountId: 1,
+    paymentMethod: "cash",
+    referenceNo: "CSH-339",
+    description: "صرف أتعاب خدمات قانونية ومتابعة",
+    receivedBy: "مكاشفي",
+    createdAt: "2026-10-05",
+  },
+];
+
 const DEFAULT_DB: LocalDatabase = {
   user: {
     id: 1,
@@ -179,6 +259,7 @@ const DEFAULT_DB: LocalDatabase = {
   company: DEFAULT_COMPANY,
   accounts: DEFAULT_ACCOUNTS,
   contacts: DEFAULT_CONTACTS,
+  vouchers: DEFAULT_VOUCHERS,
   transactions: [
     {
       id: 1,
@@ -293,6 +374,7 @@ function getDb(): LocalDatabase {
     const parsed = JSON.parse(raw);
     if (!parsed.company) parsed.company = DEFAULT_COMPANY;
     if (!parsed.contacts) parsed.contacts = DEFAULT_CONTACTS;
+    if (!parsed.vouchers) parsed.vouchers = DEFAULT_VOUCHERS;
     return parsed;
   } catch {
     return DEFAULT_DB;
@@ -405,6 +487,77 @@ export function executeLocalProcedure(path: string, input: any): any {
 
   if (path === "contacts.delete") {
     db.contacts = (db.contacts ?? DEFAULT_CONTACTS).filter((c) => c.id !== input.id);
+    saveDb(db);
+    return { ok: true };
+  }
+
+  // ── Vouchers: Receipt & Payment ──
+  if (path === "vouchers.list") {
+    const type = input?.type;
+    const list = db.vouchers ?? DEFAULT_VOUCHERS;
+    if (type) return list.filter((v) => v.type === type);
+    return list;
+  }
+
+  if (path === "vouchers.create") {
+    const list = db.vouchers ?? DEFAULT_VOUCHERS;
+    const nextId = list.length > 0 ? Math.max(...list.map((v) => v.id)) + 1 : 1;
+    const prefix = input.type === "receipt" ? "RV" : "PV";
+    const voucherNumber = input.number || `${prefix}-${String(nextId).padStart(3, "0")}`;
+
+    const newVoucher: LocalVoucher = {
+      id: nextId,
+      number: voucherNumber,
+      type: input.type,
+      date: input.date,
+      amount: Number(input.amount).toFixed(2),
+      contactId: input.contactId ?? null,
+      contactName: input.contactName ?? "",
+      accountId: input.accountId,
+      paymentMethod: input.paymentMethod ?? "cash",
+      referenceNo: input.referenceNo ?? "",
+      description: input.description,
+      receivedBy: input.receivedBy ?? "مكاشفي",
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+
+    list.unshift(newVoucher);
+    db.vouchers = list;
+
+    // Automatically create a matching transaction for real-time account balances
+    const nextTxId = db.transactions.length > 0 ? Math.max(...db.transactions.map((t) => t.id)) + 1 : 1;
+    const kind = input.type === "receipt" ? "income" : "expense";
+    const category = input.type === "receipt" ? "سندات قبض" : "سندات صرف";
+    db.transactions.unshift({
+      id: nextTxId,
+      accountId: input.accountId,
+      contactId: input.contactId ?? null,
+      amount: Number(input.amount).toFixed(2),
+      kind,
+      category,
+      description: `${voucherNumber} - ${input.description}`,
+      date: input.date,
+      userId: 1,
+    });
+
+    // Update contact balance if contact is selected
+    if (input.contactId) {
+      const contact = (db.contacts ?? []).find((c) => c.id === input.contactId);
+      if (contact) {
+        if (input.type === "receipt") {
+          contact.balance = Math.max(0, (contact.balance || 0) - Number(input.amount));
+        } else {
+          contact.balance = Math.max(0, (contact.balance || 0) - Number(input.amount));
+        }
+      }
+    }
+
+    saveDb(db);
+    return newVoucher;
+  }
+
+  if (path === "vouchers.delete") {
+    db.vouchers = (db.vouchers ?? DEFAULT_VOUCHERS).filter((v) => v.id !== input.id);
     saveDb(db);
     return { ok: true };
   }
