@@ -78,9 +78,9 @@ export default function Layout({
         <div className="max-w-3xl lg:max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
-              م
+              ك
             </div>
-            <span className="font-bold text-lg">مكاشفي</span>
+            <span className="font-bold text-lg">كاف برو (KAF PRO)</span>
           </div>
           {UserMenu}
         </div>
