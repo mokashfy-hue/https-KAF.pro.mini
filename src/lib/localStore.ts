@@ -1,16 +1,44 @@
 import superjson from "superjson";
 
+export interface CompanyInfo {
+  name: string;
+  nameEn: string;
+  crNumber: string;
+  taxNumber: string;
+  currency: string;
+  phone: string;
+  email: string;
+  address: string;
+  city: string;
+  slogan: string;
+}
+
 export interface LocalAccount {
   id: number;
   name: string;
+  code?: string;
   type: "cash" | "bank" | "credit_card" | "savings" | "income" | "expense" | "other";
   color: string;
   userId: number;
 }
 
+export interface LocalContact {
+  id: number;
+  name: string;
+  type: "customer" | "supplier";
+  phone: string;
+  email: string;
+  taxNumber?: string;
+  balance: number;
+  custodyBalance?: number;
+  notes?: string;
+  createdAt: string;
+}
+
 export interface LocalTransaction {
   id: number;
   accountId: number;
+  contactId?: number | null;
   amount: string;
   kind: "income" | "expense";
   category: string;
@@ -23,6 +51,7 @@ export interface LocalJournalLine {
   id: number;
   entryId: number;
   accountId: number;
+  contactId?: number | null;
   debit: string;
   credit: string;
   description?: string | null;
@@ -55,13 +84,89 @@ export interface LocalDatabase {
     role: "admin" | "user";
     avatar: string;
   };
+  company: CompanyInfo;
   accounts: LocalAccount[];
+  contacts: LocalContact[];
   transactions: LocalTransaction[];
   journalEntries: LocalJournalEntry[];
   transfers: LocalTransfer[];
 }
 
 const STORAGE_KEY = "kaf_pro_accounting_db";
+
+const DEFAULT_COMPANY: CompanyInfo = {
+  name: "شركة كاف برو للحلول الإدارية والمالية",
+  nameEn: "KAF PRO ERP & Financial Solutions Co.",
+  crNumber: "1010789456",
+  taxNumber: "310456789000003",
+  currency: "ر.س (SAR)",
+  phone: "+966 50 123 4567",
+  email: "finance@kaf-pro.com",
+  address: "طريق الملك فهد، حي الصحافة",
+  city: "الرياض، المملكة العربية السعودية",
+  slogan: "الريادة في الأنظمة المحاسبية والمالية الذكية",
+};
+
+const DEFAULT_CONTACTS: LocalContact[] = [
+  {
+    id: 1,
+    name: "مؤسسة الأفق للتجارة والمقاولات",
+    type: "customer",
+    phone: "0551122334",
+    email: "alofooq@example.com",
+    taxNumber: "300123456700003",
+    balance: 14500,
+    custodyBalance: 5000,
+    notes: "عميل عقود سنوية معتمد",
+    createdAt: "2026-09-15",
+  },
+  {
+    id: 2,
+    name: "شركة نماء الخليج للتطوير والاستثمار",
+    type: "customer",
+    phone: "0509988776",
+    email: "namaa@example.com",
+    taxNumber: "300765432100003",
+    balance: 28000,
+    custodyBalance: 0,
+    notes: "مشروع استشارات إدارية",
+    createdAt: "2026-09-20",
+  },
+  {
+    id: 3,
+    name: "شركة التجهيزات والتقنية المتقدمة",
+    type: "supplier",
+    phone: "0114455667",
+    email: "tech-supply@example.com",
+    taxNumber: "310987654300003",
+    balance: 8200,
+    custodyBalance: 0,
+    notes: "مورد أجهزة وسيرفرات",
+    createdAt: "2026-09-10",
+  },
+  {
+    id: 4,
+    name: "مكتب المستشار للخدمات القانونية",
+    type: "supplier",
+    phone: "0543322110",
+    email: "legal@advisor.com",
+    taxNumber: "300445566700003",
+    balance: 3500,
+    custodyBalance: 0,
+    notes: "استشارات ومتابعة قضايا",
+    createdAt: "2026-09-25",
+  },
+];
+
+const DEFAULT_ACCOUNTS: LocalAccount[] = [
+  { id: 1, name: "الصندوق الرئيسي (نقدي)", code: "101", type: "cash", color: "#10b981", userId: 1 },
+  { id: 2, name: "الحساب البنكي (الراجحي)", code: "102", type: "bank", color: "#0ea5e9", userId: 1 },
+  { id: 3, name: "بنك الجزيرة", code: "103", type: "bank", color: "#3b82f6", userId: 1 },
+  { id: 4, name: "حساب الادخار والاستثمار", code: "104", type: "savings", color: "#8b5cf6", userId: 1 },
+  { id: 5, name: "بطاقة ائتمان الأعمال", code: "201", type: "credit_card", color: "#f59e0b", userId: 1 },
+  { id: 6, name: "إيرادات المبيعات والخدمات", code: "401", type: "income", color: "#22c55e", userId: 1 },
+  { id: 7, name: "المصروفات التشغيلية", code: "501", type: "expense", color: "#ef4444", userId: 1 },
+];
 
 const DEFAULT_DB: LocalDatabase = {
   user: {
@@ -71,33 +176,29 @@ const DEFAULT_DB: LocalDatabase = {
     role: "admin",
     avatar: "",
   },
-  accounts: [
-    { id: 1, name: "الصندوق الرئيسي (نقدي)", type: "cash", color: "#10b981", userId: 1 },
-    { id: 2, name: "الحساب البنكي (الراجحي)", type: "bank", color: "#0ea5e9", userId: 1 },
-    { id: 3, name: "بنك الجزيرة", type: "bank", color: "#3b82f6", userId: 1 },
-    { id: 4, name: "حساب الادخار والاستثمار", type: "savings", color: "#8b5cf6", userId: 1 },
-    { id: 5, name: "بطاقة ائتمان الأعمال", type: "credit_card", color: "#f59e0b", userId: 1 },
-    { id: 6, name: "إيرادات المبيعات والخدمات", type: "income", color: "#22c55e", userId: 1 },
-    { id: 7, name: "المصروفات التشغيلية", type: "expense", color: "#ef4444", userId: 1 },
-  ],
+  company: DEFAULT_COMPANY,
+  accounts: DEFAULT_ACCOUNTS,
+  contacts: DEFAULT_CONTACTS,
   transactions: [
     {
       id: 1,
       accountId: 1,
+      contactId: 1,
       amount: "15000.00",
       kind: "income",
       category: "إيرادات خدمات",
-      description: "تحصيل عهدة وأتعاب من العملاء",
+      description: "تحصيل عهدة وأتعاب من مؤسسة الأفق",
       date: "2026-10-01",
       userId: 1,
     },
     {
       id: 2,
       accountId: 2,
+      contactId: 2,
       amount: "38500.00",
       kind: "income",
       category: "إيراد استشارات",
-      description: "دفعة مشروع معتمد",
+      description: "دفعة مشروع معتمد من شركة نماء الخليج",
       date: "2026-10-02",
       userId: 1,
     },
@@ -114,10 +215,11 @@ const DEFAULT_DB: LocalDatabase = {
     {
       id: 4,
       accountId: 1,
+      contactId: 3,
       amount: "1850.00",
       kind: "expense",
       category: "مصاريف تشغيل",
-      description: "فواتير ومستلزمات مكتبية",
+      description: "فواتير ومستلزمات مكتبية وتقنية",
       date: "2026-10-04",
       userId: 1,
     },
@@ -166,6 +268,17 @@ const DEFAULT_DB: LocalDatabase = {
         { id: 3, entryId: 1, accountId: 6, debit: "0.00", credit: "53500.00", description: "إلى حـ/ رأس المال والعهد" },
       ],
     },
+    {
+      id: 2,
+      date: "2026-10-03",
+      description: "قيد إثبات إيراد واستحقاق عميل مؤسسة الأفق",
+      reference: "JV-002",
+      userId: 1,
+      lines: [
+        { id: 4, entryId: 2, accountId: 1, debit: "15000.00", credit: "0.00", description: "استلام عهدة نقدية بالصندوق" },
+        { id: 5, entryId: 2, accountId: 6, debit: "0.00", credit: "15000.00", description: "إيراد مبيعات وخدمات" },
+      ],
+    },
   ],
 };
 
@@ -177,7 +290,10 @@ function getDb(): LocalDatabase {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DB));
       return DEFAULT_DB;
     }
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (!parsed.company) parsed.company = DEFAULT_COMPANY;
+    if (!parsed.contacts) parsed.contacts = DEFAULT_CONTACTS;
+    return parsed;
   } catch {
     return DEFAULT_DB;
   }
@@ -234,6 +350,206 @@ export function executeLocalProcedure(path: string, input: any): any {
   }
   if (path === "auth.logout") {
     return { success: true };
+  }
+
+  // ── Company Info ──
+  if (path === "company.get") {
+    return db.company ?? DEFAULT_COMPANY;
+  }
+  if (path === "company.update") {
+    db.company = { ...(db.company ?? DEFAULT_COMPANY), ...input };
+    saveDb(db);
+    return db.company;
+  }
+
+  // ── Contacts (Customers & Suppliers) ──
+  if (path === "contacts.list") {
+    const type = input?.type;
+    const list = db.contacts ?? DEFAULT_CONTACTS;
+    if (type) return list.filter((c) => c.type === type);
+    return list;
+  }
+
+  if (path === "contacts.create") {
+    const list = db.contacts ?? DEFAULT_CONTACTS;
+    const nextId = list.length > 0 ? Math.max(...list.map((c) => c.id)) + 1 : 1;
+    const newContact: LocalContact = {
+      id: nextId,
+      name: input.name,
+      type: input.type,
+      phone: input.phone ?? "",
+      email: input.email ?? "",
+      taxNumber: input.taxNumber ?? "",
+      balance: Number(input.balance ?? 0),
+      custodyBalance: Number(input.custodyBalance ?? 0),
+      notes: input.notes ?? "",
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+    list.unshift(newContact);
+    db.contacts = list;
+    saveDb(db);
+    return newContact;
+  }
+
+  if (path === "contacts.update") {
+    const list = db.contacts ?? DEFAULT_CONTACTS;
+    const idx = list.findIndex((c) => c.id === input.id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...input };
+      db.contacts = list;
+      saveDb(db);
+      return list[idx];
+    }
+    return { ok: true };
+  }
+
+  if (path === "contacts.delete") {
+    db.contacts = (db.contacts ?? DEFAULT_CONTACTS).filter((c) => c.id !== input.id);
+    saveDb(db);
+    return { ok: true };
+  }
+
+  // ── Reports: Trial Balance, Income Statement, Balance Sheet ──
+  if (path === "reports.trialBalance") {
+    // Compute debits and credits for all accounts
+    const accountRows = db.accounts.map((acc) => {
+      let debitTotal = 0;
+      let creditTotal = 0;
+
+      // From transactions
+      for (const t of db.transactions) {
+        if (t.accountId === acc.id) {
+          if (t.kind === "income") {
+            debitTotal += n(t.amount);
+          } else {
+            creditTotal += n(t.amount);
+          }
+        }
+      }
+
+      // From journal entries
+      for (const entry of db.journalEntries) {
+        for (const line of entry.lines) {
+          if (line.accountId === acc.id) {
+            debitTotal += n(line.debit);
+            creditTotal += n(line.credit);
+          }
+        }
+      }
+
+      // From transfers
+      for (const tf of db.transfers) {
+        if (tf.toAccountId === acc.id) debitTotal += n(tf.amount);
+        if (tf.fromAccountId === acc.id) creditTotal += n(tf.amount);
+      }
+
+      const balanceDebit = debitTotal >= creditTotal ? debitTotal - creditTotal : 0;
+      const balanceCredit = creditTotal > debitTotal ? creditTotal - debitTotal : 0;
+
+      return {
+        id: acc.id,
+        code: acc.code ?? String(100 + acc.id),
+        name: acc.name,
+        type: acc.type,
+        debitTotal,
+        creditTotal,
+        balanceDebit,
+        balanceCredit,
+      };
+    });
+
+    const sumDebitTotal = accountRows.reduce((s, r) => s + r.debitTotal, 0);
+    const sumCreditTotal = accountRows.reduce((s, r) => s + r.creditTotal, 0);
+    const sumBalanceDebit = accountRows.reduce((s, r) => s + r.balanceDebit, 0);
+    const sumBalanceCredit = accountRows.reduce((s, r) => s + r.balanceCredit, 0);
+    const isBalanced = Math.abs(sumDebitTotal - sumCreditTotal) < 0.01;
+
+    return {
+      rows: accountRows,
+      sumDebitTotal,
+      sumCreditTotal,
+      sumBalanceDebit,
+      sumBalanceCredit,
+      isBalanced,
+      date: new Date().toISOString().slice(0, 10),
+    };
+  }
+
+  if (path === "reports.incomeStatement") {
+    // Revenues
+    const revenues = db.transactions
+      .filter((t) => t.kind === "income")
+      .map((t) => ({ description: t.description || t.category, amount: n(t.amount), date: t.date }));
+    const totalRevenues = revenues.reduce((s, r) => s + r.amount, 0);
+
+    // Expenses grouped by category
+    const expCategories = new Map<string, number>();
+    for (const t of db.transactions) {
+      if (t.kind === "expense") {
+        expCategories.set(t.category, (expCategories.get(t.category) ?? 0) + n(t.amount));
+      }
+    }
+    const expensesByCategory = [...expCategories.entries()].map(([category, amount]) => ({ category, amount }));
+    const totalExpenses = expensesByCategory.reduce((s, e) => s + e.amount, 0);
+    const netProfit = totalRevenues - totalExpenses;
+    const profitMargin = totalRevenues > 0 ? (netProfit / totalRevenues) * 100 : 0;
+
+    return {
+      revenues,
+      totalRevenues,
+      expensesByCategory,
+      totalExpenses,
+      netProfit,
+      profitMargin,
+      date: new Date().toISOString().slice(0, 10),
+    };
+  }
+
+  if (path === "reports.balanceSheet") {
+    // Assets: Cash, Bank, Savings, Customers
+    const assetAccounts = db.accounts
+      .filter((a) => ["cash", "bank", "savings"].includes(a.type))
+      .map((a) => ({ name: a.name, balance: Math.max(0, balances.get(a.id) ?? 0) }));
+    
+    const customerDebts = (db.contacts ?? DEFAULT_CONTACTS)
+      .filter((c) => c.type === "customer")
+      .reduce((s, c) => s + (c.balance || 0), 0);
+
+    const totalAssets = assetAccounts.reduce((s, a) => s + a.balance, 0) + customerDebts;
+
+    // Liabilities: Credit Cards, Suppliers
+    const liabilityAccounts = db.accounts
+      .filter((a) => a.type === "credit_card")
+      .map((a) => ({ name: a.name, balance: Math.abs(balances.get(a.id) ?? 0) }));
+    
+    const supplierDebts = (db.contacts ?? DEFAULT_CONTACTS)
+      .filter((c) => c.type === "supplier")
+      .reduce((s, c) => s + (c.balance || 0), 0);
+
+    const totalLiabilities = liabilityAccounts.reduce((s, l) => s + l.balance, 0) + supplierDebts;
+
+    // Net Profit & Capital
+    const totalRevenues = db.transactions.filter((t) => t.kind === "income").reduce((s, t) => s + n(t.amount), 0);
+    const totalExpenses = db.transactions.filter((t) => t.kind === "expense").reduce((s, t) => s + n(t.amount), 0);
+    const retainedEarnings = totalRevenues - totalExpenses;
+    const capital = Math.max(0, totalAssets - totalLiabilities - retainedEarnings);
+    const totalEquity = capital + retainedEarnings;
+    const totalLiabilitiesAndEquity = totalLiabilities + totalEquity;
+
+    return {
+      assetAccounts,
+      customerDebts,
+      totalAssets,
+      liabilityAccounts,
+      supplierDebts,
+      totalLiabilities,
+      capital,
+      retainedEarnings,
+      totalEquity,
+      totalLiabilitiesAndEquity,
+      isBalanced: Math.abs(totalAssets - totalLiabilitiesAndEquity) < 1,
+      date: new Date().toISOString().slice(0, 10),
+    };
   }
 
   // ── Dashboard ──
@@ -304,6 +620,7 @@ export function executeLocalProcedure(path: string, input: any): any {
     const newAcc: LocalAccount = {
       id: nextId,
       name: input.name,
+      code: input.code ?? String(100 + nextId),
       type: input.type,
       color: input.color ?? "#0ea5e9",
       userId: 1,
@@ -318,6 +635,7 @@ export function executeLocalProcedure(path: string, input: any): any {
     if (idx !== -1) {
       if (input.name) db.accounts[idx].name = input.name;
       if (input.color) db.accounts[idx].color = input.color;
+      if (input.code) db.accounts[idx].code = input.code;
       saveDb(db);
     }
     return { ok: true };
@@ -343,6 +661,7 @@ export function executeLocalProcedure(path: string, input: any): any {
     const newTx: LocalTransaction = {
       id: nextId,
       accountId: input.accountId,
+      contactId: input.contactId ?? null,
       amount: Number(input.amount).toFixed(2),
       kind: input.kind,
       category: input.category,
@@ -359,6 +678,7 @@ export function executeLocalProcedure(path: string, input: any): any {
     const idx = db.transactions.findIndex((t) => t.id === input.id);
     if (idx !== -1) {
       if (input.accountId !== undefined) db.transactions[idx].accountId = input.accountId;
+      if (input.contactId !== undefined) db.transactions[idx].contactId = input.contactId;
       if (input.amount !== undefined) db.transactions[idx].amount = Number(input.amount).toFixed(2);
       if (input.kind !== undefined) db.transactions[idx].kind = input.kind;
       if (input.category !== undefined) db.transactions[idx].category = input.category;
@@ -423,6 +743,7 @@ export function executeLocalProcedure(path: string, input: any): any {
       id: nextLineId++,
       entryId: nextId,
       accountId: l.accountId,
+      contactId: l.contactId ?? null,
       debit: Number(l.debit ?? 0).toFixed(2),
       credit: Number(l.credit ?? 0).toFixed(2),
       description: l.description ?? null,
@@ -448,45 +769,19 @@ export function executeLocalProcedure(path: string, input: any): any {
 
   // ── Backup & restore ──
   if (path === "finance.backup.export") {
-    const nameOf = (id: number) => db.accounts.find((a) => a.id === id)?.name ?? "";
     return {
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
-      accounts: db.accounts.map((a) => ({
-        name: a.name,
-        type: a.type,
-        color: a.color,
-      })),
-      transactions: db.transactions.map((t) => ({
-        kind: t.kind,
-        amount: n(t.amount),
-        date: String(t.date),
-        category: t.category,
-        description: t.description,
-        accountName: nameOf(t.accountId),
-      })),
-      journalEntries: db.journalEntries.map((e) => ({
-        date: String(e.date),
-        description: e.description,
-        lines: e.lines.map((l) => ({
-          accountName: nameOf(l.accountId),
-          debit: n(l.debit),
-          credit: n(l.credit),
-          description: l.description,
-        })),
-      })),
-      transfers: db.transfers.map((t) => ({
-        fromAccountName: nameOf(t.fromAccountId),
-        toAccountName: nameOf(t.toAccountId),
-        amount: n(t.amount),
-        date: String(t.date),
-        note: t.note,
-      })),
+      company: db.company,
+      accounts: db.accounts,
+      contacts: db.contacts,
+      transactions: db.transactions,
+      journalEntries: db.journalEntries,
+      transfers: db.transfers,
     };
   }
 
   if (path === "finance.backup.restore") {
-    // Overwrite with imported data
     saveDb(DEFAULT_DB);
     return { ok: true };
   }

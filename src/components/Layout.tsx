@@ -11,6 +11,8 @@ import {
   Wallet,
   Receipt,
   Globe,
+  Users,
+  FileSpreadsheet,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -28,7 +30,9 @@ const NAV = [
   { path: "/transactions", arLabel: "الحركات", enLabel: "Transactions", icon: Receipt },
   { path: "/journal", arLabel: "القيود", enLabel: "Journal", icon: BookOpen },
   { path: "/accounts", arLabel: "الحسابات", enLabel: "Accounts", icon: Wallet },
-  { path: "/settings", arLabel: "الإعدادات", enLabel: "Settings", icon: Settings },
+  { path: "/contacts", arLabel: "العملاء والموردين", enLabel: "Contacts", icon: Users },
+  { path: "/reports", arLabel: "التقارير المالية", enLabel: "Reports", icon: FileSpreadsheet },
+  { path: "/settings", arLabel: "بيانات الشركة", enLabel: "Settings", icon: Settings },
 ];
 
 export default function Layout({
@@ -139,14 +143,16 @@ export default function Layout({
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="grid grid-cols-5 h-16 items-center">
-          {NAV.slice(0, 2).map((item) => (
-            <MobileNavItem
-              key={item.path}
-              item={item}
-              active={location.pathname === item.path}
-              label={t(item.arLabel, item.enLabel)}
-            />
-          ))}
+          <MobileNavItem
+            item={NAV[0]}
+            active={location.pathname === NAV[0].path}
+            label={t(NAV[0].arLabel, NAV[0].enLabel)}
+          />
+          <MobileNavItem
+            item={NAV[1]}
+            active={location.pathname === NAV[1].path}
+            label={t(NAV[1].arLabel, NAV[1].enLabel)}
+          />
           <div className="flex justify-center">
             <button
               onClick={onAdd ?? (() => navigate("/transactions?add=1"))}
@@ -156,14 +162,16 @@ export default function Layout({
               <Plus className="h-7 w-7" />
             </button>
           </div>
-          {NAV.slice(2).map((item) => (
-            <MobileNavItem
-              key={item.path}
-              item={item}
-              active={location.pathname === item.path}
-              label={t(item.arLabel, item.enLabel)}
-            />
-          ))}
+          <MobileNavItem
+            item={NAV[4]}
+            active={location.pathname === NAV[4].path}
+            label={t(NAV[4].arLabel, NAV[4].enLabel)}
+          />
+          <MobileNavItem
+            item={NAV[5]}
+            active={location.pathname === NAV[5].path}
+            label={t(NAV[5].arLabel, NAV[5].enLabel)}
+          />
         </div>
       </nav>
     </div>
