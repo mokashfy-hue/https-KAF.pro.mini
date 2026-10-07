@@ -18,8 +18,10 @@ import {
   FileSpreadsheet,
   FileText,
   Smartphone,
+  Building2,
 } from "lucide-react";
 import { InstallOfflineDialog } from "@/components/InstallOfflineDialog";
+import { ClientSwitcherDialog } from "@/components/ClientSwitcherDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +53,7 @@ export default function Layout({
   const location = useLocation();
   const navigate = useNavigate();
   const [installDialogOpen, setInstallDialogOpen] = useState(false);
+  const [clientSwitcherOpen, setClientSwitcherOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -78,6 +81,9 @@ export default function Layout({
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align={isRtl ? "start" : "end"}>
+        <DropdownMenuItem onClick={() => setClientSwitcherOpen(true)} className="gap-2 text-emerald-700 font-semibold">
+          <Building2 className="h-4 w-4" /> {t("تبديل مساحة العميل", "Switch Client Workspace")}
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => logout()} className="gap-2 text-rose-600 focus:text-rose-600">
           <LogOut className="h-4 w-4" /> {t("تسجيل الخروج", "Log Out")}
         </DropdownMenuItem>
@@ -95,6 +101,21 @@ export default function Layout({
               ك
             </div>
             <span className="font-bold text-lg tracking-tight">كاف برو (KAF PRO)</span>
+
+            {/* Client Private Workspace Badge */}
+            <button
+              onClick={() => setClientSwitcherOpen(true)}
+              className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-xs font-semibold transition-all cursor-pointer mr-2 active:scale-95"
+              title={t("مساحة عمل العميل الخاصة - اضغط للتبديل", "Private client workspace - click to switch")}
+            >
+              <Building2 className="h-3.5 w-3.5 text-emerald-600" />
+              <span className="font-bold text-emerald-950 max-w-[150px] truncate">
+                {(user as any)?.clientName || user?.name || "مساحة العميل"}
+              </span>
+              <span className="text-[10px] bg-white text-emerald-800 px-1.5 py-0.2 rounded border border-emerald-300 font-mono">
+                🔒 خاص
+              </span>
+            </button>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3">
@@ -193,6 +214,7 @@ export default function Layout({
 
       {/* Install & Offline Package Dialog */}
       <InstallOfflineDialog open={installDialogOpen} onOpenChange={setInstallDialogOpen} />
+      <ClientSwitcherDialog open={clientSwitcherOpen} onOpenChange={setClientSwitcherOpen} />
     </div>
   );
 }

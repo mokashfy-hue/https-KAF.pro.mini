@@ -92,6 +92,18 @@ export interface LocalVoucher {
   createdAt: string;
 }
 
+export interface ClientAccount {
+  id: string;
+  code: string;
+  name: string;
+  ownerName: string;
+  email: string;
+  phone: string;
+  pin: string;
+  currency: string;
+  createdAt: string;
+}
+
 export interface LocalDatabase {
   user: {
     id: number;
@@ -99,6 +111,9 @@ export interface LocalDatabase {
     email: string;
     role: "admin" | "user";
     avatar: string;
+    clientName?: string;
+    clientCode?: string;
+    clientId?: string;
   };
   company: CompanyInfo;
   accounts: LocalAccount[];
@@ -363,13 +378,134 @@ const DEFAULT_DB: LocalDatabase = {
   ],
 };
 
+const CLIENTS_REGISTRY_KEY = "kaf_pro_clients_registry";
+const ACTIVE_CLIENT_KEY = "kaf_pro_active_client_id";
+
+export const DEFAULT_CLIENTS: ClientAccount[] = [
+  {
+    id: "client_main",
+    code: "MAIN-01",
+    name: "شركة كاف برو للحلول الإدارية والمالية",
+    ownerName: "مكاشفي",
+    email: "admin@kaf.pro",
+    phone: "+966 50 123 4567",
+    pin: "1234",
+    currency: "ر.س (SAR)",
+    createdAt: "2026-09-01",
+  },
+  {
+    id: "client_alofooq",
+    code: "C-101",
+    name: "مؤسسة الأفق للتجارة والمقاولات",
+    ownerName: "أحمد العتيبي",
+    email: "alofooq@example.com",
+    phone: "0551122334",
+    pin: "1234",
+    currency: "ر.س (SAR)",
+    createdAt: "2026-09-15",
+  },
+  {
+    id: "client_namaa",
+    code: "C-102",
+    name: "شركة نماء الخليج للتطوير والاستثمار",
+    ownerName: "سعد التميمي",
+    email: "namaa@example.com",
+    phone: "0509988776",
+    pin: "1234",
+    currency: "ر.س (SAR)",
+    createdAt: "2026-09-20",
+  },
+];
+
+export function getClientsRegistry(): ClientAccount[] {
+  if (typeof window === "undefined") return DEFAULT_CLIENTS;
+  try {
+    const raw = localStorage.getItem(CLIENTS_REGISTRY_KEY);
+    if (!raw) {
+      localStorage.setItem(CLIENTS_REGISTRY_KEY, JSON.stringify(DEFAULT_CLIENTS));
+      return DEFAULT_CLIENTS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_CLIENTS;
+  } catch {
+    return DEFAULT_CLIENTS;
+  }
+}
+
+export function saveClientsRegistry(clients: ClientAccount[]) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(CLIENTS_REGISTRY_KEY, JSON.stringify(clients));
+  } catch (err) {
+    console.error("Failed to save clients registry", err);
+  }
+}
+
+export function getActiveClientId(): string {
+  if (typeof window === "undefined") return "client_main";
+  try {
+    const active = localStorage.getItem(ACTIVE_CLIENT_KEY);
+    return active || "client_main";
+  } catch {
+    return "client_main";
+  }
+}
+
+export function setActiveClientId(id: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ACTIVE_CLIENT_KEY, id);
+  } catch (err) {
+    console.error("Failed to set active client id", err);
+  }
+}
+
+export function getClientStorageKey(clientId: string): string {
+  if (clientId === "client_main") {
+    return "kaf_pro_accounting_db";
+  }
+  return `kaf_pro_client_${clientId}_db`;
+}
+
 function getDb(): LocalDatabase {
   if (typeof window === "undefined") return DEFAULT_DB;
+  const clientId = getActiveClientId();
+  const storageKey = getClientStorageKey(clientId);
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_DB));
-      return DEFAULT_DB;
+      const registry = getClientsRegistry();
+      const currentClient = registry.find((c) => c.id === clientId);
+      const initialDb: LocalDatabase = {
+        ...DEFAULT_DB,
+        user: {
+          id: 1,
+          name: currentClient?.ownerName || "مسؤول النظام",
+          email: currentClient?.email || "user@kaf.pro",
+          role: "admin",
+          avatar: "",
+          clientName: currentClient?.name,
+          clientCode: currentClient?.code,
+          clientId,
+        },
+        company: currentClient
+          ? {
+              ...DEFAULT_COMPANY,
+              name: currentClient.name,
+              nameEn: currentClient.code,
+              currency: currentClient.currency || "ر.س (SAR)",
+              phone: currentClient.phone,
+              email: currentClient.email,
+            }
+          : DEFAULT_COMPANY,
+        transactions: clientId === "client_main" ? DEFAULT_DB.transactions : [],
+        vouchers: clientId === "client_main" ? DEFAULT_VOUCHERS : [],
+        contacts: clientId === "client_main" ? DEFAULT_CONTACTS : [],
+        journalEntries: clientId === "client_main" ? DEFAULT_DB.journalEntries : [],
+        transfers: [],
+      };
+      localStorage.setItem(storageKey, JSON.stringify(initialDb));
+      return initialDb;
     }
     const parsed = JSON.parse(raw);
     if (!parsed.company) parsed.company = DEFAULT_COMPANY;
@@ -383,8 +519,10 @@ function getDb(): LocalDatabase {
 
 function saveDb(db: LocalDatabase) {
   if (typeof window === "undefined") return;
+  const clientId = getActiveClientId();
+  const storageKey = getClientStorageKey(clientId);
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+    localStorage.setItem(storageKey, JSON.stringify(db));
   } catch (err) {
     console.error("Failed to save local database", err);
   }
@@ -423,11 +561,137 @@ function computeBalances(db: LocalDatabase) {
 }
 
 export function executeLocalProcedure(path: string, input: any): any {
+  // ── Client Registry & Authentication Management ──
+  if (path === "auth.clients.list") {
+    const clients = getClientsRegistry();
+    return clients.map(({ pin, ...rest }) => ({
+      ...rest,
+      hasPin: Boolean(pin),
+    }));
+  }
+
+  if (path === "auth.clients.getActive") {
+    const activeId = getActiveClientId();
+    const clients = getClientsRegistry();
+    const activeClient = clients.find((c) => c.id === activeId) || clients[0] || DEFAULT_CLIENTS[0];
+    return {
+      activeClient,
+      clientId: activeId,
+      isPrivate: true,
+    };
+  }
+
+  if (path === "auth.clients.login") {
+    const { identifier, pin } = input;
+    const clients = getClientsRegistry();
+    const found = clients.find(
+      (c) =>
+        c.id === identifier ||
+        c.code.toLowerCase() === (identifier || "").toLowerCase().trim() ||
+        c.email.toLowerCase() === (identifier || "").toLowerCase().trim()
+    );
+    if (!found) {
+      throw new Error("بيانات العميل غير صحيحة، يرجى التأكد من كود أو بريد العميل");
+    }
+    if (found.pin && pin && found.pin !== pin) {
+      throw new Error("رمز المرور (PIN) غير صحيح لهذا العميل");
+    }
+    setActiveClientId(found.id);
+    return { success: true, client: found };
+  }
+
+  if (path === "auth.clients.register") {
+    const { name, ownerName, email, phone, pin, currency, crNumber, taxNumber } = input;
+    const clients = getClientsRegistry();
+    const nextNum = clients.length + 1;
+    const code = `CL-${String(nextNum).padStart(3, "0")}`;
+    const newId = `client_${Date.now()}`;
+    const newClient: ClientAccount = {
+      id: newId,
+      code,
+      name,
+      ownerName: ownerName || name,
+      email: email || `${code.toLowerCase()}@client.kaf`,
+      phone: phone || "",
+      pin: pin || "1234",
+      currency: currency || "ر.س (SAR)",
+      createdAt: new Date().toISOString().slice(0, 10),
+    };
+    clients.push(newClient);
+    saveClientsRegistry(clients);
+
+    // Initialize completely private, clean database for this client
+    const newDb: LocalDatabase = {
+      user: {
+        id: 1,
+        name: newClient.ownerName,
+        email: newClient.email,
+        role: "admin",
+        avatar: "",
+        clientName: newClient.name,
+        clientCode: newClient.code,
+        clientId: newId,
+      },
+      company: {
+        name: newClient.name,
+        nameEn: code,
+        crNumber: crNumber || "",
+        taxNumber: taxNumber || "",
+        currency: newClient.currency,
+        phone: newClient.phone,
+        email: newClient.email,
+        address: "المقر الرئيسي للعميل",
+        city: "المملكة العربية السعودية",
+        slogan: "نظام محاسبي خاص ومعزول",
+      },
+      accounts: DEFAULT_ACCOUNTS,
+      contacts: [],
+      vouchers: [],
+      transactions: [],
+      journalEntries: [],
+      transfers: [],
+    };
+    const storageKey = getClientStorageKey(newId);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(storageKey, JSON.stringify(newDb));
+    }
+
+    setActiveClientId(newId);
+    return { success: true, client: newClient };
+  }
+
+  if (path === "auth.clients.switch") {
+    const { clientId, pin } = input;
+    const clients = getClientsRegistry();
+    const target = clients.find((c) => c.id === clientId);
+    if (!target) throw new Error("العميل غير موجود");
+    if (target.pin && pin && target.pin !== pin) {
+      throw new Error("رمز المرور غير صحيح");
+    }
+    setActiveClientId(clientId);
+    return { success: true, client: target };
+  }
+
   const db = getDb();
   const balances = computeBalances(db);
 
   // ── Auth ──
   if (path === "auth.me") {
+    const activeId = getActiveClientId();
+    const clients = getClientsRegistry();
+    const client = clients.find((c) => c.id === activeId);
+    if (client) {
+      return {
+        id: 1,
+        name: client.ownerName || client.name,
+        email: client.email,
+        role: "admin",
+        avatar: "",
+        clientName: client.name,
+        clientCode: client.code,
+        clientId: client.id,
+      };
+    }
     return db.user;
   }
   if (path === "auth.logout") {
