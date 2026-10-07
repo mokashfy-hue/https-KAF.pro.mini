@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Save,
   CheckCircle2,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { CompanyInfo } from "@/lib/localStore";
@@ -271,6 +272,16 @@ export default function SettingsPage() {
                 <CloudUpload className="h-4 w-4 text-sky-600" />
                 {t("استعادة نسخة احتياطية", "Restore Backup")}
               </Button>
+
+              <a
+                href="/kaf-pro-offline-portable.html"
+                download="kaf-pro-offline-portable.html"
+                className="inline-flex items-center gap-2 px-3 py-2 border rounded-md text-sm font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 transition-colors"
+                title={t("تحميل ملف مستقل لإرساله للعميل ليعمل محلياً بدون إنترنت", "Download offline client file")}
+              >
+                <Download className="h-4 w-4" />
+                {t("📥 تحميل نسخة العميل المستقلة (Offline HTML)", "📥 Download Offline Client Package")}
+              </a>
 
               <input
                 ref={fileRef}

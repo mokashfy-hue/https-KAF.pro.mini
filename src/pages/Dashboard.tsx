@@ -15,7 +15,10 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
+  Smartphone,
+  Download,
 } from "lucide-react";
+import { InstallOfflineDialog } from "@/components/InstallOfflineDialog";
 import {
   Bar,
   BarChart,
@@ -47,6 +50,7 @@ export default function Dashboard() {
   const { data: accounts } = trpc.finance.accounts.list.useQuery();
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<TxLike | null>(null);
+  const [installOpen, setInstallOpen] = useState(false);
 
   const accName = (id: number) => accounts?.find((a) => a.id === id)?.name ?? "";
 
@@ -55,11 +59,48 @@ export default function Dashboard() {
   return (
     <Layout onAdd={() => { setEditing(null); setAddOpen(true); }}>
       <div className="space-y-5">
-        <div>
-          <h1 className="text-2xl font-bold">{t("لوحة التحكم", "Dashboard")}</h1>
-          <p className="text-sm text-muted-foreground">
-            {t("نظرة عامة على وضعك المالي", "Overview of your financial status")}
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold">{t("لوحة التحكم", "Dashboard")}</h1>
+            <p className="text-sm text-muted-foreground">
+              {t("نظرة عامة على وضعك المالي", "Overview of your financial status")}
+            </p>
+          </div>
+          <button
+            onClick={() => setInstallOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold transition-all w-fit shadow-xs active:scale-95"
+          >
+            <Smartphone className="h-4 w-4 text-emerald-600" />
+            <span>{t("📲 تحميل / تثبيت التطبيق والنسخة المحلية", "Install App / Download Offline")}</span>
+          </button>
+        </div>
+
+        {/* Offline & App Installation Notice Banner */}
+        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md shadow-emerald-700/20">
+          <div className="flex items-center gap-3.5">
+            <div className="h-11 w-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+              <Smartphone className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm sm:text-base">
+                {t("تطبيق كاف برو قابل للتثبيت والعمل محلياً بدون إنترنت!", "KAF PRO is installable & works offline locally!")}
+              </h3>
+              <p className="text-xs text-white/80 mt-0.5">
+                {t(
+                  "ثبّته على جوالك أو الكمبيوتر أو حمّل نسخة مستقلة للعميل للعمل بها بدون خادم.",
+                  "Install on phone/PC or download a standalone portable offline copy for any client."
+                )}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setInstallOpen(true)}
+              className="px-4 py-2 bg-white text-emerald-800 hover:bg-white/90 text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 active:scale-95"
+            >
+              {t("📲 خيارات التثبيت والتحميل", "Install & Download Options")}
+            </button>
+          </div>
         </div>
 
         {/* Stat cards */}
@@ -218,6 +259,7 @@ export default function Dashboard() {
       </div>
 
       <TransactionDialog open={addOpen} onOpenChange={setAddOpen} editing={editing} />
+      <InstallOfflineDialog open={installOpen} onOpenChange={setInstallOpen} />
     </Layout>
   );
 }

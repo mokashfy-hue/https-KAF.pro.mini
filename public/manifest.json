@@ -1,0 +1,22 @@
+{
+  "name": "كاف برو — النظام المحاسبي الذكي المتكامل",
+  "short_name": "كاف برو",
+  "description": "نظام كاف برو المحاسبي لإدارة الحسابات، العملاء والموردين، القيود اليومية، وسندات القبض والصرف دون الحاجة لإنترنت",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "background_color": "#059669",
+  "theme_color": "#059669",
+  "dir": "rtl",
+  "lang": "ar",
+  "orientation": "any",
+  "categories": ["finance", "business", "productivity"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

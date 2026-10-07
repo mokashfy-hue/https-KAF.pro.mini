@@ -2,6 +2,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { LOGIN_PATH } from "@/const";
 import { cn } from "@/lib/utils";
+import { useState, type ReactNode } from "react";
+import { useLocation, useNavigate } from "react-router";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen,
   Home,
@@ -14,10 +17,9 @@ import {
   Users,
   FileSpreadsheet,
   FileText,
+  Smartphone,
 } from "lucide-react";
-import type { ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router";
-import { Skeleton } from "@/components/ui/skeleton";
+import { InstallOfflineDialog } from "@/components/InstallOfflineDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +50,7 @@ export default function Layout({
   const { lang, isRtl, toggleLanguage, t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
+  const [installDialogOpen, setInstallDialogOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -94,11 +97,22 @@ export default function Layout({
             <span className="font-bold text-lg tracking-tight">كاف برو (KAF PRO)</span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Install / Download App Button */}
+            <button
+              onClick={() => setInstallDialogOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all shadow-xs active:scale-95"
+              title={t("تثبيت التطبيق على الجوال أو الكمبيوتر أو تحميل النسخة المحلية", "Install app or download offline version")}
+            >
+              <Smartphone className="h-4 w-4 text-emerald-700" />
+              <span className="hidden sm:inline">{t("تحميل / تثبيت التطبيق", "Install / Download")}</span>
+              <span className="sm:hidden">{t("تثبيت", "Install")}</span>
+            </button>
+
             {/* Language Switcher */}
             <button
               onClick={toggleLanguage}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border bg-card hover:bg-accent text-xs font-semibold transition-colors shadow-sm"
+              className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl border bg-card hover:bg-accent text-xs font-semibold transition-colors shadow-sm"
               title={isRtl ? "Switch to English (Left side menu)" : "التبديل إلى العربية (القائمة يمين)"}
             >
               <Globe className="h-4 w-4 text-emerald-600" />
@@ -176,6 +190,9 @@ export default function Layout({
           />
         </div>
       </nav>
+
+      {/* Install & Offline Package Dialog */}
+      <InstallOfflineDialog open={installDialogOpen} onOpenChange={setInstallDialogOpen} />
     </div>
   );
 }
