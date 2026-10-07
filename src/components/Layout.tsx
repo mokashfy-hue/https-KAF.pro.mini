@@ -1,4 +1,5 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useLanguage } from "@/contexts/LanguageContext";
 import { LOGIN_PATH } from "@/const";
 import { cn } from "@/lib/utils";
 import {
@@ -9,6 +10,7 @@ import {
   Settings,
   Wallet,
   Receipt,
+  Globe,
 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
@@ -22,11 +24,11 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const NAV = [
-  { path: "/", label: "الرئيسية", icon: Home },
-  { path: "/transactions", label: "الحركات", icon: Receipt },
-  { path: "/journal", label: "القيود", icon: BookOpen },
-  { path: "/accounts", label: "الحسابات", icon: Wallet },
-  { path: "/settings", label: "الإعدادات", icon: Settings },
+  { path: "/", arLabel: "الرئيسية", enLabel: "Dashboard", icon: Home },
+  { path: "/transactions", arLabel: "الحركات", enLabel: "Transactions", icon: Receipt },
+  { path: "/journal", arLabel: "القيود", enLabel: "Journal", icon: BookOpen },
+  { path: "/accounts", arLabel: "الحسابات", enLabel: "Accounts", icon: Wallet },
+  { path: "/settings", arLabel: "الإعدادات", enLabel: "Settings", icon: Settings },
 ];
 
 export default function Layout({
@@ -37,6 +39,7 @@ export default function Layout({
   onAdd?: () => void;
 }) {
   const { user, isLoading, logout } = useAuth();
+  const { lang, isRtl, toggleLanguage, t } = useLanguage();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -58,40 +61,56 @@ export default function Layout({
   const UserMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger className="outline-none">
-        <Avatar className="h-9 w-9 border">
+        <Avatar className="h-9 w-9 border cursor-pointer hover:ring-2 hover:ring-emerald-500/30 transition-all">
           <AvatarImage src={user.avatar ?? undefined} />
-          <AvatarFallback>{user.name?.slice(0, 1) ?? "م"}</AvatarFallback>
+          <AvatarFallback className="bg-emerald-100 text-emerald-800 font-bold">
+            {user.name?.slice(0, 1) ?? "م"}
+          </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => logout()} className="gap-2">
-          <LogOut className="h-4 w-4" /> تسجيل الخروج
+      <DropdownMenuContent align={isRtl ? "start" : "end"}>
+        <DropdownMenuItem onClick={() => logout()} className="gap-2 text-rose-600 focus:text-rose-600">
+          <LogOut className="h-4 w-4" /> {t("تسجيل الخروج", "Log Out")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground" dir={isRtl ? "rtl" : "ltr"}>
       {/* Header */}
       <header className="sticky top-0 z-30 bg-background/80 backdrop-blur border-b">
         <div className="max-w-3xl lg:max-w-6xl mx-auto flex items-center justify-between px-4 h-14">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+          <div className="flex items-center gap-2.5">
+            <div className="h-9 w-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-lg shadow-sm shadow-emerald-600/30">
               ك
             </div>
-            <span className="font-bold text-lg">كاف برو (KAF PRO)</span>
+            <span className="font-bold text-lg tracking-tight">كاف برو (KAF PRO)</span>
           </div>
-          {UserMenu}
+
+          <div className="flex items-center gap-3">
+            {/* Language Switcher */}
+            <button
+              onClick={toggleLanguage}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border bg-card hover:bg-accent text-xs font-semibold transition-colors shadow-sm"
+              title={isRtl ? "Switch to English (Left side menu)" : "التبديل إلى العربية (القائمة يمين)"}
+            >
+              <Globe className="h-4 w-4 text-emerald-600" />
+              <span>{lang === "ar" ? "English" : "عربي"}</span>
+            </button>
+            {UserMenu}
+          </div>
         </div>
       </header>
 
-      <div className="max-w-3xl lg:max-w-6xl mx-auto lg:flex lg:flex-row-reverse lg:gap-6">
-        {/* Desktop side nav (right side in RTL) */}
+      {/* Main Container: in RTL aside is on RIGHT, in LTR aside is on LEFT */}
+      <div className="max-w-3xl lg:max-w-6xl mx-auto lg:flex lg:gap-6">
+        {/* Desktop side nav: naturally follows document direction */}
         <aside className="hidden lg:block w-56 shrink-0 py-6">
           <nav className="sticky top-20 space-y-1">
             {NAV.map((item) => {
               const active = location.pathname === item.path;
+              const label = t(item.arLabel, item.enLabel);
               return (
                 <button
                   key={item.path}
@@ -99,12 +118,12 @@ export default function Layout({
                   className={cn(
                     "w-full flex items-center gap-3 rounded-xl px-4 h-11 text-sm transition-colors",
                     active
-                      ? "bg-emerald-600 text-white font-semibold"
-                      : "hover:bg-accent text-muted-foreground",
+                      ? "bg-emerald-600 text-white font-semibold shadow-md shadow-emerald-600/20"
+                      : "hover:bg-accent text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
+                  <item.icon className="h-4 w-4 shrink-0" />
+                  <span>{label}</span>
                 </button>
               );
             })}
@@ -121,19 +140,29 @@ export default function Layout({
       >
         <div className="grid grid-cols-5 h-16 items-center">
           {NAV.slice(0, 2).map((item) => (
-            <MobileNavItem key={item.path} item={item} active={location.pathname === item.path} />
+            <MobileNavItem
+              key={item.path}
+              item={item}
+              active={location.pathname === item.path}
+              label={t(item.arLabel, item.enLabel)}
+            />
           ))}
           <div className="flex justify-center">
             <button
               onClick={onAdd ?? (() => navigate("/transactions?add=1"))}
               className="h-14 w-14 -mt-8 rounded-full bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 flex items-center justify-center active:scale-95 transition-transform"
-              aria-label="إضافة حركة"
+              aria-label={t("إضافة حركة", "Add Transaction")}
             >
               <Plus className="h-7 w-7" />
             </button>
           </div>
           {NAV.slice(2).map((item) => (
-            <MobileNavItem key={item.path} item={item} active={location.pathname === item.path} />
+            <MobileNavItem
+              key={item.path}
+              item={item}
+              active={location.pathname === item.path}
+              label={t(item.arLabel, item.enLabel)}
+            />
           ))}
         </div>
       </nav>
@@ -144,9 +173,11 @@ export default function Layout({
 function MobileNavItem({
   item,
   active,
+  label,
 }: {
   item: (typeof NAV)[number];
   active: boolean;
+  label: string;
 }) {
   const navigate = useNavigate();
   return (
@@ -158,7 +189,7 @@ function MobileNavItem({
       )}
     >
       <item.icon className="h-5 w-5" />
-      {item.label}
+      <span>{label}</span>
     </button>
   );
 }

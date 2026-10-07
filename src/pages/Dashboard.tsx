@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Layout from "@/components/Layout";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   TransactionDialog,
   type TxLike,
@@ -34,7 +35,14 @@ const MONTH_AR: Record<string, string> = {
   "09": "سبتمبر", "10": "أكتوبر", "11": "نوفمبر", "12": "ديسمبر",
 };
 
+const MONTH_EN: Record<string, string> = {
+  "01": "Jan", "02": "Feb", "03": "Mar", "04": "Apr",
+  "05": "May", "06": "Jun", "07": "Jul", "08": "Aug",
+  "09": "Sep", "10": "Oct", "11": "Nov", "12": "Dec",
+};
+
 export default function Dashboard() {
+  const { lang, t, isRtl } = useLanguage();
   const { data, isLoading } = trpc.finance.dashboard.useQuery();
   const { data: accounts } = trpc.finance.accounts.list.useQuery();
   const [addOpen, setAddOpen] = useState(false);
@@ -42,39 +50,43 @@ export default function Dashboard() {
 
   const accName = (id: number) => accounts?.find((a) => a.id === id)?.name ?? "";
 
+  const monthMap = isRtl ? MONTH_AR : MONTH_EN;
+
   return (
     <Layout onAdd={() => { setEditing(null); setAddOpen(true); }}>
       <div className="space-y-5">
         <div>
-          <h1 className="text-2xl font-bold">لوحة التحكم</h1>
-          <p className="text-sm text-muted-foreground">نظرة عامة على وضعك المالي</p>
+          <h1 className="text-2xl font-bold">{t("لوحة التحكم", "Dashboard")}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t("نظرة عامة على وضعك المالي", "Overview of your financial status")}
+          </p>
         </div>
 
         {/* Stat cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           <StatCard
-            title="الرصيد الحالي"
+            title={t("الرصيد الحالي", "Current Balance")}
             value={data?.currentBalance}
             icon={<Wallet className="h-5 w-5" />}
             accent="bg-emerald-600"
             loading={isLoading}
           />
           <StatCard
-            title="إجمالي الدخل"
+            title={t("إجمالي الدخل", "Total Income")}
             value={data?.totalIncome}
             icon={<TrendingUp className="h-5 w-5" />}
             accent="bg-sky-600"
             loading={isLoading}
           />
           <StatCard
-            title="إجمالي المصروفات"
+            title={t("إجمالي المصروفات", "Total Expenses")}
             value={data?.totalExpense}
             icon={<TrendingDown className="h-5 w-5" />}
             accent="bg-rose-600"
             loading={isLoading}
           />
           <StatCard
-            title="الادخار"
+            title={t("الادخار", "Savings")}
             value={data?.savings}
             icon={<PiggyBank className="h-5 w-5" />}
             accent="bg-violet-600"
@@ -86,7 +98,9 @@ export default function Dashboard() {
         <div className="grid lg:grid-cols-2 gap-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">الدخل مقابل المصروفات (آخر ٦ أشهر)</CardTitle>
+              <CardTitle className="text-base">
+                {t("الدخل مقابل المصروفات (آخر ٦ أشهر)", "Income vs Expenses (Last 6 Months)")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="h-64">
               {data && data.monthly.length > 0 ? (
@@ -94,26 +108,28 @@ export default function Dashboard() {
                   <BarChart
                     data={data.monthly.map((m) => ({
                       ...m,
-                      label: MONTH_AR[m.month.slice(5)] ?? m.month,
+                      label: monthMap[m.month.slice(5)] ?? m.month,
                     }))}
                   >
                     <XAxis dataKey="label" fontSize={12} />
                     <YAxis fontSize={12} width={50} />
                     <Tooltip formatter={(v: number) => formatMoney(v)} />
                     <Legend />
-                    <Bar dataKey="income" name="دخل" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" name="مصروف" fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="income" name={t("دخل", "Income")} fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="expense" name={t("مصروف", "Expense")} fill="#f43f5e" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyChart text="لا توجد بيانات بعد — أضف أول حركة لك" />
+                <EmptyChart text={t("لا توجد بيانات بعد — أضف أول حركة لك", "No data yet — add your first transaction")} />
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">المصروفات حسب التصنيف</CardTitle>
+              <CardTitle className="text-base">
+                {t("المصروفات حسب التصنيف", "Expenses by Category")}
+              </CardTitle>
             </CardHeader>
             <CardContent className="h-64">
               {data && data.byCategory.length > 0 ? (
@@ -139,7 +155,7 @@ export default function Dashboard() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <EmptyChart text="لا توجد مصروفات مسجلة بعد" />
+                <EmptyChart text={t("لا توجد مصروفات مسجلة بعد", "No expenses recorded yet")} />
               )}
             </CardContent>
           </Card>
@@ -148,27 +164,27 @@ export default function Dashboard() {
         {/* Recent transactions */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">أحدث الحركات</CardTitle>
+            <CardTitle className="text-base">{t("أحدث الحركات", "Recent Transactions")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
             {data && data.recent.length > 0 ? (
-              data.recent.map((t) => (
+              data.recent.map((tItem) => (
                 <button
-                  key={t.id}
+                  key={tItem.id}
                   onClick={() => {
-                    setEditing(t);
+                    setEditing(tItem);
                     setAddOpen(true);
                   }}
-                  className="w-full flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-accent text-right transition-colors"
+                  className={`w-full flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-accent ${isRtl ? "text-right" : "text-left"} transition-colors`}
                 >
                   <div
                     className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${
-                      t.kind === "income"
+                      tItem.kind === "income"
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-rose-100 text-rose-700"
                     }`}
                   >
-                    {t.kind === "income" ? (
+                    {tItem.kind === "income" ? (
                       <ArrowDownLeft className="h-4 w-4" />
                     ) : (
                       <ArrowUpRight className="h-4 w-4" />
@@ -176,25 +192,25 @@ export default function Dashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate">
-                      {t.description || t.category}
+                      {tItem.description || tItem.category}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {t.category} · {accName(t.accountId)} · {String(t.date)}
+                      {tItem.category} · {accName(tItem.accountId)} · {String(tItem.date)}
                     </div>
                   </div>
                   <div
                     className={`text-sm font-bold tabular-nums ${
-                      t.kind === "income" ? "text-emerald-600" : "text-rose-600"
+                      tItem.kind === "income" ? "text-emerald-600" : "text-rose-600"
                     }`}
                     dir="ltr"
                   >
-                    {t.kind === "income" ? "+" : "−"}{formatMoney(t.amount)}
+                    {tItem.kind === "income" ? "+" : "−"}{formatMoney(tItem.amount)}
                   </div>
                 </button>
               ))
             ) : (
               <p className="text-sm text-muted-foreground text-center py-8">
-                لا توجد حركات بعد. اضغط زر + لإضافة أول مصروف.
+                {t("لا توجد حركات بعد. اضغط زر + لإضافة أول حركة.", "No transactions yet. Click + to add your first transaction.")}
               </p>
             )}
           </CardContent>
