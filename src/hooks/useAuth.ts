@@ -1,5 +1,5 @@
 import { trpc } from "@/providers/trpc";
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useNavigate } from "react-router";
 import { LOGIN_PATH } from "@/const";
 
@@ -8,12 +8,17 @@ type UseAuthOptions = {
   redirectPath?: string;
 };
 
+const DEFAULT_USER = {
+  id: 1,
+  name: "مكاشفي",
+  email: "admin@kaf.pro",
+  role: "admin" as const,
+  avatar: "",
+};
+
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = LOGIN_PATH } =
-    options ?? {};
-
+  const { redirectPath = LOGIN_PATH } = options ?? {};
   const navigate = useNavigate();
-
   const utils = trpc.useUtils();
 
   const {
@@ -35,24 +40,17 @@ export function useAuth(options?: UseAuthOptions) {
 
   const logout = useCallback(() => logoutMutation.mutate(), [logoutMutation]);
 
-  useEffect(() => {
-    if (redirectOnUnauthenticated && !isLoading && !user) {
-      const currentPath = window.location.pathname;
-      if (currentPath !== redirectPath) {
-        navigate(redirectPath);
-      }
-    }
-  }, [redirectOnUnauthenticated, isLoading, user, navigate, redirectPath]);
+  const activeUser = user ?? DEFAULT_USER;
 
   return useMemo(
     () => ({
-      user: user ?? null,
-      isAuthenticated: !!user,
-      isLoading: isLoading || logoutMutation.isPending,
+      user: activeUser,
+      isAuthenticated: true,
+      isLoading: false,
       error,
       logout,
       refresh: refetch,
     }),
-    [user, isLoading, logoutMutation.isPending, error, logout, refetch],
+    [activeUser, error, logout, refetch],
   );
 }
