@@ -17,8 +17,6 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
-  Smartphone,
-  Download,
   FileText,
   Receipt,
   BookOpen,
@@ -159,119 +157,81 @@ export default function Dashboard() {
 
   return (
     <Layout onAdd={() => { setEditing(null); setAddOpen(true); }}>
-      <div className="space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold">{t("لوحة التحكم", "Dashboard")}</h1>
-            <p className="text-sm text-muted-foreground">
-              {t("نظرة عامة على وضعك المالي", "Overview of your financial status")}
-            </p>
-          </div>
-          <button
-            onClick={() => setInstallOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 text-emerald-800 text-xs font-bold transition-all w-fit shadow-xs active:scale-95"
-          >
-            <Smartphone className="h-4 w-4 text-emerald-600" />
-            <span>{t("📲 تحميل / تثبيت التطبيق والنسخة المحلية", "Install App / Download Offline")}</span>
-          </button>
+      <div className="space-y-4 pb-2">
+
+        {/* Page Title */}
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold">{t("لوحة التحكم", "Dashboard")}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+            {t("نظرة عامة على وضعك المالي", "Overview of your financial status")}
+          </p>
         </div>
 
-        {/* Offline & App Installation Notice Banner */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md shadow-emerald-700/20">
-          <div className="flex items-center gap-3.5">
-            <div className="h-11 w-11 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-              <Smartphone className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h3 className="font-bold text-sm sm:text-base">
-                {t("تطبيق كاف برو قابل للتثبيت والعمل محلياً بدون إنترنت!", "KAF PRO is installable & works offline locally!")}
-              </h3>
-              <p className="text-xs text-white/80 mt-0.5">
-                {t(
-                  "ثبّته على جوالك أو الكمبيوتر أو حمّل نسخة مستقلة للعميل للعمل بها بدون خادم.",
-                  "Install on phone/PC or download a standalone portable offline copy for any client."
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setInstallOpen(true)}
-              className="px-4 py-2 bg-white text-emerald-800 hover:bg-white/90 text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 active:scale-95"
-            >
-              {t("📲 خيارات التثبيت والتحميل", "Install & Download Options")}
-            </button>
-          </div>
-        </div>
-
-        {/* Stat cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Stat cards - 2 cols on mobile, 4 on desktop */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
           <StatCard
             title={t("الرصيد الحالي", "Current Balance")}
             value={data?.currentBalance}
-            icon={<Wallet className="h-5 w-5" />}
+            icon={<Wallet className="h-4 w-4 sm:h-5 sm:w-5" />}
             accent="bg-emerald-600"
             loading={isLoading}
           />
           <StatCard
             title={t("إجمالي الدخل", "Total Income")}
             value={data?.totalIncome}
-            icon={<TrendingUp className="h-5 w-5" />}
+            icon={<TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />}
             accent="bg-sky-600"
             loading={isLoading}
           />
           <StatCard
             title={t("إجمالي المصروفات", "Total Expenses")}
             value={data?.totalExpense}
-            icon={<TrendingDown className="h-5 w-5" />}
+            icon={<TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />}
             accent="bg-rose-600"
             loading={isLoading}
           />
           <StatCard
             title={t("الادخار", "Savings")}
             value={data?.savings}
-            icon={<PiggyBank className="h-5 w-5" />}
+            icon={<PiggyBank className="h-4 w-4 sm:h-5 sm:w-5" />}
             accent="bg-violet-600"
             loading={isLoading}
           />
         </div>
 
-        {/* All ERP Modules Quick Access Grid - visible on mobile & desktop! */}
-        <div className="space-y-3 pt-1">
+        {/* All ERP Modules Quick Access Grid */}
+        <div className="space-y-2.5">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-base sm:text-lg font-bold flex items-center gap-2">
-                <span className="h-2.5 w-2.5 rounded-full bg-emerald-600 inline-block animate-pulse" />
-                <span>{t("وحدات وأقسام النظام المحاسبي", "ERP System Modules & Units")}</span>
+              <h2 className="text-sm sm:text-base font-bold flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-emerald-600 inline-block" />
+                <span>{t("وحدات وأقسام النظام المحاسبي", "ERP System Modules")}</span>
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {t("جميع الوحدات متاحة على الجوال والكمبيوتر بخصوصية كاملة", "All units accessible on mobile & desktop")}
-              </p>
             </div>
-            <span className="text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full font-bold">
+            <span className="text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-full font-bold">
               8 {t("وحدات", "Units")}
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {ERP_MODULES.map((mod) => (
               <button
                 key={mod.path}
                 onClick={() => navigate(mod.path)}
-                className="flex flex-col items-start p-3 sm:p-4 rounded-2xl bg-card hover:bg-emerald-50/40 border border-border/80 hover:border-emerald-300 transition-all text-right group shadow-xs active:scale-[0.98] relative overflow-hidden"
+                className="flex flex-col items-start p-2.5 sm:p-3.5 rounded-xl bg-card hover:bg-emerald-50/40 border border-border/60 hover:border-emerald-300 transition-all text-right group shadow-xs active:scale-[0.98]"
               >
-                <div className="w-full flex items-center justify-between mb-2">
-                  <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-105", mod.color)}>
-                    <mod.icon className="h-5 w-5" />
+                <div className="w-full flex items-center justify-between mb-1.5">
+                  <div className={cn("h-8 w-8 sm:h-9 sm:w-9 rounded-lg flex items-center justify-center text-white shadow-sm transition-transform group-hover:scale-110", mod.color)}>
+                    <mod.icon className="h-4 w-4" />
                   </div>
-                  <span className="text-[10px] font-semibold text-muted-foreground bg-muted/80 px-1.5 py-0.5 rounded">
+                  <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground bg-muted/70 px-1.5 py-0.5 rounded">
                     {t(mod.badgeAr, mod.badgeEn)}
                   </span>
                 </div>
-                <div className="font-bold text-xs sm:text-sm text-foreground group-hover:text-emerald-700 transition-colors">
+                <div className="font-bold text-[11px] sm:text-xs text-foreground group-hover:text-emerald-700 transition-colors leading-tight">
                   {t(mod.arTitle, mod.enTitle)}
                 </div>
-                <div className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">
+                <div className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5 hidden sm:block">
                   {t(mod.arDesc, mod.enDesc)}
                 </div>
               </button>
@@ -279,15 +239,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Charts */}
-        <div className="grid lg:grid-cols-2 gap-4">
+        {/* Charts - stacked on mobile, side by side on desktop */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
+            <CardHeader className="pb-2 px-4 pt-4">
+              <CardTitle className="text-sm sm:text-base">
                 {t("الدخل مقابل المصروفات (آخر ٦ أشهر)", "Income vs Expenses (Last 6 Months)")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="h-64">
+            <CardContent className="h-52 sm:h-64 px-2 sm:px-4 pb-3">
               {data && data.monthly.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
@@ -295,13 +255,14 @@ export default function Dashboard() {
                       ...m,
                       label: monthMap[m.month.slice(5)] ?? m.month,
                     }))}
+                    margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
                   >
-                    <XAxis dataKey="label" fontSize={12} />
-                    <YAxis fontSize={12} width={50} />
+                    <XAxis dataKey="label" fontSize={10} tick={{ fontSize: 10 }} />
+                    <YAxis fontSize={10} width={40} tick={{ fontSize: 10 }} />
                     <Tooltip formatter={(v: number) => formatMoney(v)} />
-                    <Legend />
-                    <Bar dataKey="income" name={t("دخل", "Income")} fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" name={t("مصروف", "Expense")} fill="#f43f5e" radius={[4, 4, 0, 0]} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Bar dataKey="income" name={t("دخل", "Income")} fill="#10b981" radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="expense" name={t("مصروف", "Expense")} fill="#f43f5e" radius={[3, 3, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -311,12 +272,12 @@ export default function Dashboard() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
+            <CardHeader className="pb-2 px-4 pt-4">
+              <CardTitle className="text-sm sm:text-base">
                 {t("المصروفات حسب التصنيف", "Expenses by Category")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="h-64">
+            <CardContent className="h-52 sm:h-64 px-2 sm:px-4 pb-3">
               {data && data.byCategory.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -324,8 +285,8 @@ export default function Dashboard() {
                       data={data.byCategory}
                       dataKey="value"
                       nameKey="category"
-                      innerRadius={55}
-                      outerRadius={85}
+                      innerRadius={45}
+                      outerRadius={75}
                       paddingAngle={3}
                     >
                       {data.byCategory.map((c) => (
@@ -336,7 +297,7 @@ export default function Dashboard() {
                       ))}
                     </Pie>
                     <Tooltip formatter={(v: number) => formatMoney(v)} />
-                    <Legend />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -348,10 +309,10 @@ export default function Dashboard() {
 
         {/* Recent transactions */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">{t("أحدث الحركات", "Recent Transactions")}</CardTitle>
+          <CardHeader className="pb-2 px-4 pt-4">
+            <CardTitle className="text-sm sm:text-base">{t("أحدث الحركات", "Recent Transactions")}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1">
+          <CardContent className="space-y-0.5 px-2 sm:px-4 pb-3">
             {data && data.recent.length > 0 ? (
               data.recent.map((tItem) => (
                 <button
@@ -360,31 +321,31 @@ export default function Dashboard() {
                     setEditing(tItem);
                     setAddOpen(true);
                   }}
-                  className={`w-full flex items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-accent ${isRtl ? "text-right" : "text-left"} transition-colors`}
+                  className={`w-full flex items-center gap-2.5 sm:gap-3 rounded-xl px-2 py-2 hover:bg-accent ${isRtl ? "text-right" : "text-left"} transition-colors`}
                 >
                   <div
-                    className={`h-9 w-9 rounded-full flex items-center justify-center shrink-0 ${
+                    className={`h-8 w-8 sm:h-9 sm:w-9 rounded-full flex items-center justify-center shrink-0 ${
                       tItem.kind === "income"
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-rose-100 text-rose-700"
                     }`}
                   >
                     {tItem.kind === "income" ? (
-                      <ArrowDownLeft className="h-4 w-4" />
+                      <ArrowDownLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     ) : (
-                      <ArrowUpRight className="h-4 w-4" />
+                      <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">
+                    <div className="text-xs sm:text-sm font-medium truncate">
                       {tItem.description || tItem.category}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {tItem.category} · {accName(tItem.accountId)} · {String(tItem.date)}
+                    <div className="text-[10px] sm:text-xs text-muted-foreground">
+                      {tItem.category} · {String(tItem.date)}
                     </div>
                   </div>
                   <div
-                    className={`text-sm font-bold tabular-nums ${
+                    className={`text-xs sm:text-sm font-bold tabular-nums shrink-0 ${
                       tItem.kind === "income" ? "text-emerald-600" : "text-rose-600"
                     }`}
                     dir="ltr"
@@ -394,7 +355,7 @@ export default function Dashboard() {
                 </button>
               ))
             ) : (
-              <p className="text-sm text-muted-foreground text-center py-8">
+              <p className="text-sm text-muted-foreground text-center py-6">
                 {t("لا توجد حركات بعد. اضغط زر + لإضافة أول حركة.", "No transactions yet. Click + to add your first transaction.")}
               </p>
             )}
@@ -423,14 +384,14 @@ function StatCard({
 }) {
   return (
     <Card className="overflow-hidden">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-2 text-muted-foreground mb-2">
-          <div className={`h-8 w-8 rounded-lg ${accent} text-white flex items-center justify-center`}>
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-center gap-2 text-muted-foreground mb-1.5">
+          <div className={`h-7 w-7 sm:h-8 sm:w-8 rounded-lg ${accent} text-white flex items-center justify-center shrink-0`}>
             {icon}
           </div>
-          <span className="text-xs">{title}</span>
+          <span className="text-[10px] sm:text-xs leading-tight">{title}</span>
         </div>
-        <div className="text-lg lg:text-xl font-bold tabular-nums" dir="ltr">
+        <div className="text-base sm:text-lg lg:text-xl font-bold tabular-nums" dir="ltr">
           {loading ? "…" : formatMoney(value)}
         </div>
       </CardContent>
