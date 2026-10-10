@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AccountCombobox } from "@/components/finance/AccountCombobox";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -179,21 +180,13 @@ export function TransactionDialog({
           </div>
           <div className="space-y-1.5">
             <Label>الحساب / طريقة الدفع</Label>
-            <Select
-              value={accountId ? String(accountId) : undefined}
-              onValueChange={(v) => setAccountId(Number(v))}
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="اختر الحساب" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts?.map((a) => (
-                  <SelectItem key={a.id} value={String(a.id)}>
-                    {a.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <AccountCombobox
+              accounts={accounts}
+              value={accountId}
+              onChange={setAccountId}
+              placeholder="اختر الحساب"
+              className="h-11"
+            />
           </div>
         </div>
 

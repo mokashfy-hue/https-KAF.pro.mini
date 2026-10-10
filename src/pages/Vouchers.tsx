@@ -3,6 +3,7 @@ import Layout from "@/components/Layout";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { trpc } from "@/providers/trpc";
 import { Button } from "@/components/ui/button";
+import { AccountCombobox } from "@/components/finance/AccountCombobox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -707,18 +708,12 @@ export default function VouchersPage() {
                     ? t("الحساب المودع به (الصندوق/البنك)", "Deposit To Account")
                     : t("الحساب المسحوب منه (الصندوق/البنك)", "Withdraw From Account")} *
                 </Label>
-                <Select value={selectedAccountId} onValueChange={setSelectedAccountId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={t("اختر الحساب المالي", "Select Account")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts.map((a) => (
-                      <SelectItem key={a.id} value={String(a.id)}>
-                        {a.name} ({a.type})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <AccountCombobox
+                  accounts={accounts}
+                  value={selectedAccountId ? Number(selectedAccountId) : null}
+                  onChange={(v) => setSelectedAccountId(String(v))}
+                  placeholder={t("اختر الحساب المالي", "Select Account")}
+                />
               </div>
 
               {/* Payment Method */}

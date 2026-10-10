@@ -2,6 +2,7 @@ import { useState } from "react";
 import Layout from "@/components/Layout";
 import { trpc } from "@/providers/trpc";
 import { Button } from "@/components/ui/button";
+import { AccountCombobox } from "@/components/finance/AccountCombobox";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -213,21 +214,14 @@ export default function JournalPage() {
             </div>
             {lines.map((l, i) => (
               <div key={i} className="grid grid-cols-[1fr_80px_80px_36px] sm:grid-cols-[1fr_110px_110px_36px] gap-2 items-center">
-                <Select
-                  value={l.accountId ? String(l.accountId) : undefined}
-                  onValueChange={(v) =>
-                    setLines((ls) => ls.map((x, j) => (j === i ? { ...x, accountId: Number(v) } : x)))
+                <AccountCombobox
+                  accounts={accounts}
+                  value={l.accountId}
+                  onChange={(v) =>
+                    setLines((ls) => ls.map((x, j) => (j === i ? { ...x, accountId: v } : x)))
                   }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="الحساب" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {accounts?.map((a) => (
-                      <SelectItem key={a.id} value={String(a.id)}>{a.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="الحساب"
+                />
                 <Input
                   type="number"
                   inputMode="decimal"
