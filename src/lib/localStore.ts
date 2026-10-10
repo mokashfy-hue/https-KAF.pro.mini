@@ -598,6 +598,13 @@ function getDb(): LocalDatabase {
     if (!parsed.company) parsed.company = DEFAULT_COMPANY;
     if (!parsed.contacts) parsed.contacts = DEFAULT_CONTACTS;
     if (!parsed.vouchers) parsed.vouchers = DEFAULT_VOUCHERS;
+    
+    // Migration: Update accounts if they match the old default accounts structure (no nameEn, code 101)
+    if (!parsed.accounts || (parsed.accounts.length > 0 && parsed.accounts[0].code === "101" && !("nameEn" in parsed.accounts[0]))) {
+       parsed.accounts = DEFAULT_ACCOUNTS;
+       localStorage.setItem(storageKey, JSON.stringify(parsed));
+    }
+
     return parsed;
   } catch {
     return DEFAULT_DB;
