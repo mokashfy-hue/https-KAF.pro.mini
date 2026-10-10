@@ -393,28 +393,6 @@ export const DEFAULT_CLIENTS: ClientAccount[] = [
     currency: "ر.س (SAR)",
     createdAt: "2026-09-01",
   },
-  {
-    id: "client_alofooq",
-    code: "C-101",
-    name: "مؤسسة الأفق للتجارة والمقاولات",
-    ownerName: "أحمد العتيبي",
-    email: "alofooq@example.com",
-    phone: "0551122334",
-    pin: "1234",
-    currency: "ر.س (SAR)",
-    createdAt: "2026-09-15",
-  },
-  {
-    id: "client_namaa",
-    code: "C-102",
-    name: "شركة نماء الخليج للتطوير والاستثمار",
-    ownerName: "سعد التميمي",
-    email: "namaa@example.com",
-    phone: "0509988776",
-    pin: "1234",
-    currency: "ر.س (SAR)",
-    createdAt: "2026-09-20",
-  },
 ];
 
 export function getClientsRegistry(): ClientAccount[] {
@@ -426,7 +404,17 @@ export function getClientsRegistry(): ClientAccount[] {
       return DEFAULT_CLIENTS;
     }
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_CLIENTS;
+    let clients = Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_CLIENTS;
+    
+    // Migration: Filter out the hardcoded mock clients to ensure only user-created and main clients remain
+    clients = clients.filter(c => c.id !== "client_alofooq" && c.id !== "client_namaa");
+    
+    // Save back if we removed anything
+    if (clients.length !== parsed.length) {
+      localStorage.setItem(CLIENTS_REGISTRY_KEY, JSON.stringify(clients));
+    }
+    
+    return clients.length > 0 ? clients : DEFAULT_CLIENTS;
   } catch {
     return DEFAULT_CLIENTS;
   }
