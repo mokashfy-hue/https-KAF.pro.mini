@@ -31,12 +31,18 @@ export const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export const ACCOUNT_TYPES = [
+  { value: "asset", label: "أصل" },
+  { value: "liability", label: "التزام" },
+  { value: "equity", label: "حقوق ملكية" },
+  { value: "income", label: "إيراد / دخل" },
+  { value: "expense", label: "مصروف" },
   { value: "cash", label: "نقدي" },
   { value: "bank", label: "حساب بنكي" },
   { value: "credit_card", label: "بطاقة ائتمان" },
   { value: "savings", label: "ادخار" },
-  { value: "income", label: "دخل" },
-  { value: "expense", label: "مصروف" },
+  { value: "contra_asset", label: "حساب مقابل للأصول" },
+  { value: "contra_revenue", label: "حساب مقابل للإيرادات" },
+  { value: "contra_equity", label: "حساب مقابل لحقوق الملكية" },
   { value: "other", label: "أخرى" },
 ] as const;
 
