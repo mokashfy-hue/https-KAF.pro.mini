@@ -14,15 +14,19 @@ import {
   TrendingUp,
   Building2,
   Calendar,
+  Activity,
+  Receipt,
 } from "lucide-react";
 
 export default function ReportsPage() {
   const { isRtl, t } = useLanguage();
-  const [reportType, setReportType] = useState<"trialBalance" | "balanceSheet" | "incomeStatement">("trialBalance");
+  const [reportType, setReportType] = useState<"trialBalance" | "balanceSheet" | "incomeStatement" | "transactions" | "vouchers">("trialBalance");
 
   const { data: trialBalance } = (trpc as any).reports.trialBalance.useQuery();
   const { data: balanceSheet } = (trpc as any).reports.balanceSheet.useQuery();
   const { data: incomeStatement } = (trpc as any).reports.incomeStatement.useQuery();
+  const { data: transactions } = (trpc as any).transactions.list.useQuery();
+  const { data: vouchers } = (trpc as any).vouchers.list.useQuery();
   const { data: company } = (trpc as any).company.get.useQuery();
 
   const handlePrint = () => {
@@ -79,6 +83,24 @@ export default function ReportsPage() {
           >
             <TrendingUp className="h-4 w-4" />
             {t("قائمة الدخل والأرباح", "Income Statement")}
+          </Button>
+
+          <Button
+            variant={reportType === "transactions" ? "default" : "outline"}
+            onClick={() => setReportType("transactions")}
+            className={reportType === "transactions" ? "bg-emerald-600 hover:bg-emerald-700 gap-2" : "gap-2"}
+          >
+            <Activity className="h-4 w-4" />
+            {t("العمليات (حركات)", "Transactions")}
+          </Button>
+
+          <Button
+            variant={reportType === "vouchers" ? "default" : "outline"}
+            onClick={() => setReportType("vouchers")}
+            className={reportType === "vouchers" ? "bg-emerald-600 hover:bg-emerald-700 gap-2" : "gap-2"}
+          >
+            <Receipt className="h-4 w-4" />
+            {t("تقرير السندات", "Vouchers Report")}
           </Button>
         </div>
 
@@ -348,6 +370,102 @@ export default function ReportsPage() {
                   <div className="text-2xl font-black font-mono text-emerald-700" dir="ltr">
                     {formatMoney(incomeStatement.netProfit)}
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── 4. TRANSACTIONS REPORT ── */}
+            {reportType === "transactions" && transactions && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-emerald-600" />
+                    {t("تقرير العمليات والحركات", "Transactions Report")}
+                  </h3>
+                </div>
+
+                <div className="overflow-x-auto border rounded-xl">
+                  <table className="w-full text-sm text-start border-collapse">
+                    <thead>
+                      <tr className="bg-muted/60 border-b text-xs text-muted-foreground">
+                        <th className="p-3 text-start">{t("التاريخ", "Date")}</th>
+                        <th className="p-3 text-start">{t("الوصف", "Description")}</th>
+                        <th className="p-3 text-start">{t("التصنيف", "Category")}</th>
+                        <th className="p-3 text-start">{t("النوع", "Type")}</th>
+                        <th className="p-3 text-end">{t("المبلغ", "Amount")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y text-xs sm:text-sm">
+                      {transactions.map((tx: any) => (
+                        <tr key={tx.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="p-3 whitespace-nowrap">{tx.date}</td>
+                          <td className="p-3">{tx.description || "-"}</td>
+                          <td className="p-3">{tx.category || "-"}</td>
+                          <td className="p-3">
+                            <span className={tx.kind === "income" ? "text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-xs font-semibold" : "text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full text-xs font-semibold"}>
+                              {tx.kind === "income" ? t("إيراد", "Income") : t("مصروف", "Expense")}
+                            </span>
+                          </td>
+                          <td className="p-3 text-end tabular-nums font-bold" dir="ltr">{formatMoney(tx.amount)}</td>
+                        </tr>
+                      ))}
+                      {transactions.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                            {t("لا توجد عمليات", "No transactions found.")}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* ── 5. VOUCHERS REPORT ── */}
+            {reportType === "vouchers" && vouchers && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Receipt className="h-5 w-5 text-emerald-600" />
+                    {t("تقرير سندات القبض والصرف", "Vouchers Report")}
+                  </h3>
+                </div>
+
+                <div className="overflow-x-auto border rounded-xl">
+                  <table className="w-full text-sm text-start border-collapse">
+                    <thead>
+                      <tr className="bg-muted/60 border-b text-xs text-muted-foreground">
+                        <th className="p-3 text-start">{t("رقم السند", "Voucher ID")}</th>
+                        <th className="p-3 text-start">{t("التاريخ", "Date")}</th>
+                        <th className="p-3 text-start">{t("النوع", "Type")}</th>
+                        <th className="p-3 text-start">{t("البيان", "Description")}</th>
+                        <th className="p-3 text-end">{t("المبلغ", "Amount")}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y text-xs sm:text-sm">
+                      {vouchers.map((v: any) => (
+                        <tr key={v.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="p-3 font-mono text-muted-foreground">{v.voucherNumber}</td>
+                          <td className="p-3 whitespace-nowrap">{v.date}</td>
+                          <td className="p-3">
+                            <span className={v.type === "receipt" ? "text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-xs font-semibold" : "text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full text-xs font-semibold"}>
+                              {v.type === "receipt" ? t("قبض", "Receipt") : t("صرف", "Payment")}
+                            </span>
+                          </td>
+                          <td className="p-3">{v.description || "-"}</td>
+                          <td className="p-3 text-end tabular-nums font-bold" dir="ltr">{formatMoney(v.amount)}</td>
+                        </tr>
+                      ))}
+                      {vouchers.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                            {t("لا توجد سندات", "No vouchers found.")}
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
