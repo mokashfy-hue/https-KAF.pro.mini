@@ -1233,7 +1233,13 @@ export function executeLocalProcedure(path: string, input: any): any {
     const newAcc: LocalAccount = {
       id: nextId,
       name: input.name,
+      nameEn: input.nameEn || "",
       code: input.code ?? String(100 + nextId),
+      parentCode: input.parentCode !== undefined ? input.parentCode : "",
+      level: input.level !== undefined ? input.level : 1,
+      isPostable: input.isPostable !== undefined ? input.isPostable : true,
+      financialStatement: input.financialStatement || "Balance Sheet",
+      normalBalance: input.normalBalance || "Debit",
       type: input.type,
       color: input.color ?? "#0ea5e9",
       userId: 1,
@@ -1246,9 +1252,14 @@ export function executeLocalProcedure(path: string, input: any): any {
   if (path === "finance.accounts.update") {
     const idx = db.accounts.findIndex((a) => a.id === input.id);
     if (idx !== -1) {
-      if (input.name) db.accounts[idx].name = input.name;
-      if (input.color) db.accounts[idx].color = input.color;
-      if (input.code) db.accounts[idx].code = input.code;
+      if (input.name !== undefined) db.accounts[idx].name = input.name;
+      if (input.nameEn !== undefined) db.accounts[idx].nameEn = input.nameEn;
+      if (input.color !== undefined) db.accounts[idx].color = input.color;
+      if (input.code !== undefined) db.accounts[idx].code = input.code;
+      if (input.parentCode !== undefined) db.accounts[idx].parentCode = input.parentCode;
+      if (input.level !== undefined) db.accounts[idx].level = input.level;
+      if (input.isPostable !== undefined) db.accounts[idx].isPostable = input.isPostable;
+      if (input.type !== undefined) db.accounts[idx].type = input.type;
       saveDb(db);
     }
     return { ok: true };
