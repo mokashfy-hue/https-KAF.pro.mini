@@ -77,35 +77,72 @@ export function InstallOfflineDialog({ open, onOpenChange }: InstallOfflineDialo
     }
   };
 
-  const handleDownloadOfflineBundle = () => {
-    // Direct link to the standalone offline portable HTML file
-    const link = document.createElement("a");
-    link.href = "/kaf-pro-offline-portable.html";
-    link.download = "kaf-pro-offline-portable.html";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast.success(
-      t(
-        "تم بدء تحميل النسخة المحلية المستقلة للعميل (جاهزة للعمل بدون إنترنت)!",
-        "Offline portable bundle downloaded successfully!"
-      )
-    );
+  const handleDownloadOfflineBundle = async () => {
+    try {
+      const clientId = localStorage.getItem("kaf_pro_active_client_id") || "client_main";
+      const storageKey = clientId === "client_main" ? "kaf_pro_accounting_db" : `kaf_pro_client_${clientId}_db`;
+      const raw = localStorage.getItem(storageKey);
+      let clientDb = raw ? JSON.parse(raw) : null;
+
+      const res = await fetch("/kaf-pro-offline-portable.html");
+      let htmlText = await res.text();
+
+      if (clientDb) {
+        // Inject active client data so the downloaded package opens with this client's name and full accounts
+        const injection = `\n    // Injected Client Package Configuration\n    window.__INJECTED_CLIENT_DB__ = ${JSON.stringify(clientDb)};\n`;
+        htmlText = htmlText.replace("const defaultData =", `${injection}    const defaultData = window.__INJECTED_CLIENT_DB__ ||`);
+      }
+
+      const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const clientName = clientDb?.company?.name || clientDb?.user?.name || "client";
+      const safeName = clientName.replace(/[/\\?%*:|"<>]/g, "-").trim();
+      link.href = url;
+      link.download = `kaf-pro-${safeName}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(
+        t(
+          `تم بنجاح تحميل النسخة المحلية المستقلة للعميل (${clientName}) شاملة دليل الحسابات الكامل!`,
+          `Downloaded offline client package with complete Chart of Accounts!`
+        )
+      );
+    } catch {
+      // Fallback
+      const link = document.createElement("a");
+      link.href = "/kaf-pro-offline-portable.html";
+      link.download = "kaf-pro-offline-portable.html";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success(
+        t(
+          "تم تحميل النسخة المحلية المستقلة (تعمل محلياً بدون إنترنت)",
+          "Offline bundle downloaded successfully"
+        )
+      );
+    }
   };
 
   const handleExportBackup = () => {
     try {
-      const raw = localStorage.getItem("kaf_pro_accounting_db") || "{}";
+      const clientId = localStorage.getItem("kaf_pro_active_client_id") || "client_main";
+      const storageKey = clientId === "client_main" ? "kaf_pro_accounting_db" : `kaf_pro_client_${clientId}_db`;
+      const raw = localStorage.getItem(storageKey) || "{}";
       const blob = new Blob([raw], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `kaf_pro_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.download = `kaf_pro_backup_${clientId}_${new Date().toISOString().slice(0, 10)}.json`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success(t("تم تصدير النسخة الاحتياطية بنجاح!", "Backup exported successfully!"));
+      toast.success(t("تم تصدير النسخة الاحتياطية للعميل الحالي بنجاح!", "Backup exported successfully!"));
     } catch {
       toast.error(t("حدث خطأ أثناء تصدير البيانات", "Error exporting data"));
     }
@@ -120,7 +157,9 @@ export function InstallOfflineDialog({ open, onOpenChange }: InstallOfflineDialo
         const text = evt.target?.result as string;
         const parsed = JSON.parse(text);
         if (parsed) {
-          localStorage.setItem("kaf_pro_accounting_db", JSON.stringify(parsed));
+          const clientId = localStorage.getItem("kaf_pro_active_client_id") || "client_main";
+          const storageKey = clientId === "client_main" ? "kaf_pro_accounting_db" : `kaf_pro_client_${clientId}_db`;
+          localStorage.setItem(storageKey, JSON.stringify(parsed));
           toast.success(t("تم استيراد البيانات بنجاح! جاري تحديث الصفحة...", "Data imported! Refreshing..."));
           setTimeout(() => window.location.reload(), 1000);
         }

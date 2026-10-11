@@ -554,6 +554,92 @@ export function getClientStorageKey(clientId: string): string {
   return `kaf_pro_client_${clientId}_db`;
 }
 
+export function ensureAccountsUpToDate(accounts: any[] | undefined): LocalAccount[] {
+  if (!Array.isArray(accounts) || accounts.length < 50) {
+    return [...DEFAULT_ACCOUNTS];
+  }
+  const existingCodes = new Set(accounts.map((a: any) => String(a.code || "")));
+  const missing = DEFAULT_ACCOUNTS.filter((da) => !existingCodes.has(String(da.code)));
+  if (missing.length === 0) {
+    return accounts;
+  }
+  let maxId = accounts.reduce((max: number, a: any) => Math.max(max, Number(a.id) || 0), 0);
+  const additions: LocalAccount[] = missing.map((m) => ({
+    ...m,
+    id: ++maxId,
+  }));
+  return [...accounts, ...additions];
+}
+
+export function migrateAllClientDatabases() {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    // 1. Migrate main database: kaf_pro_accounting_db
+    const mainRaw = localStorage.getItem("kaf_pro_accounting_db");
+    if (mainRaw) {
+      try {
+        const parsed = JSON.parse(mainRaw);
+        if (parsed) {
+          const updated = ensureAccountsUpToDate(parsed.accounts);
+          if (updated !== parsed.accounts || !parsed.accounts || parsed.accounts.length < DEFAULT_ACCOUNTS.length) {
+            parsed.accounts = updated;
+            localStorage.setItem("kaf_pro_accounting_db", JSON.stringify(parsed));
+          }
+        }
+      } catch (e) {
+        console.error("Error migrating main db accounts", e);
+      }
+    }
+
+    // 2. Scan all registered clients
+    const registry = getClientsRegistry();
+    for (const client of registry) {
+      const key = getClientStorageKey(client.id);
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          if (parsed) {
+            const updated = ensureAccountsUpToDate(parsed.accounts);
+            if (updated !== parsed.accounts || !parsed.accounts || parsed.accounts.length < DEFAULT_ACCOUNTS.length) {
+              parsed.accounts = updated;
+              localStorage.setItem(key, JSON.stringify(parsed));
+            }
+          }
+        } catch (e) {
+          console.error(`Error migrating client ${client.id} db accounts`, e);
+        }
+      }
+    }
+
+    // 3. Scan all keys in localStorage for any other kaf_pro_* client database
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith("kaf_pro_client_") || key === "kaf_pro_accounting_db") && key.endsWith("_db")) {
+        const raw = localStorage.getItem(key);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed && (!parsed.accounts || parsed.accounts.length < DEFAULT_ACCOUNTS.length)) {
+              parsed.accounts = ensureAccountsUpToDate(parsed.accounts);
+              localStorage.setItem(key, JSON.stringify(parsed));
+            }
+          } catch {}
+        }
+      }
+    }
+  } catch (err) {
+    console.error("Universal migration check failed:", err);
+  }
+}
+
+// Auto-run migration immediately on script load
+if (typeof window !== "undefined") {
+  try {
+    migrateAllClientDatabases();
+  } catch {}
+}
+
 function getDb(): LocalDatabase {
   if (typeof window === "undefined") return DEFAULT_DB;
   const clientId = getActiveClientId();
@@ -585,6 +671,7 @@ function getDb(): LocalDatabase {
               email: currentClient.email,
             }
           : DEFAULT_COMPANY,
+        accounts: [...DEFAULT_ACCOUNTS],
         transactions: clientId === "client_main" ? DEFAULT_DB.transactions : [],
         vouchers: clientId === "client_main" ? DEFAULT_VOUCHERS : [],
         contacts: clientId === "client_main" ? DEFAULT_CONTACTS : [],
@@ -599,10 +686,11 @@ function getDb(): LocalDatabase {
     if (!parsed.contacts) parsed.contacts = DEFAULT_CONTACTS;
     if (!parsed.vouchers) parsed.vouchers = DEFAULT_VOUCHERS;
     
-    // Migration: Update accounts if they match the old default accounts structure (no nameEn, code 101)
-    if (!parsed.accounts || (parsed.accounts.length > 0 && parsed.accounts[0].code === "101" && !("nameEn" in parsed.accounts[0]))) {
-       parsed.accounts = DEFAULT_ACCOUNTS;
-       localStorage.setItem(storageKey, JSON.stringify(parsed));
+    // Ensure accounts are ALWAYS complete and up to date for every client workspace
+    const updatedAccounts = ensureAccountsUpToDate(parsed.accounts);
+    if (!parsed.accounts || parsed.accounts.length < DEFAULT_ACCOUNTS.length || updatedAccounts !== parsed.accounts) {
+      parsed.accounts = updatedAccounts;
+      localStorage.setItem(storageKey, JSON.stringify(parsed));
     }
 
     return parsed;
@@ -763,6 +851,20 @@ export function executeLocalProcedure(path: string, input: any): any {
       throw new Error("رمز المرور غير صحيح");
     }
     setActiveClientId(clientId);
+
+    // Immediately ensure the switched target client has the complete 99 accounts in their db
+    if (typeof window !== "undefined") {
+      const targetKey = getClientStorageKey(clientId);
+      const targetRaw = localStorage.getItem(targetKey);
+      if (targetRaw) {
+        try {
+          const parsed = JSON.parse(targetRaw);
+          parsed.accounts = ensureAccountsUpToDate(parsed.accounts);
+          localStorage.setItem(targetKey, JSON.stringify(parsed));
+        } catch {}
+      }
+    }
+
     return { success: true, client: target };
   }
 
@@ -1293,7 +1395,16 @@ export function executeLocalProcedure(path: string, input: any): any {
   }
 
   if (path === "finance.backup.restore") {
-    saveDb(DEFAULT_DB);
+    if (input && typeof input === "object" && (input.accounts || input.company)) {
+      const restored: LocalDatabase = {
+        ...db,
+        ...input,
+        accounts: ensureAccountsUpToDate(input.accounts),
+      };
+      saveDb(restored);
+    } else {
+      saveDb(DEFAULT_DB);
+    }
     return { ok: true };
   }
 

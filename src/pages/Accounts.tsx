@@ -44,8 +44,10 @@ import {
   Pencil,
   PiggyBank,
   Plus,
+  Search,
   Trash2,
   Wallet,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -62,6 +64,10 @@ const TYPE_ICONS: Record<string, React.ReactNode> = {
 type AccountWithBalance = {
   id: number;
   name: string;
+  nameEn?: string;
+  code?: string;
+  parentCode?: string;
+  level?: number;
   type: string;
   color: string;
   balance: number;
@@ -72,10 +78,14 @@ export default function AccountsPage() {
   const { data: accounts, isLoading } = trpc.finance.accounts.list.useQuery();
   const { data: transfers } = trpc.finance.transfers.list.useQuery();
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+
   const [accDialog, setAccDialog] = useState(false);
   const [editing, setEditing] = useState<AccountWithBalance | null>(null);
   const [deleting, setDeleting] = useState<AccountWithBalance | null>(null);
   const [name, setName] = useState("");
+  const [code, setCode] = useState("");
   const [type, setType] = useState<string>("cash");
   const [color, setColor] = useState(ACCOUNT_COLORS[0]);
 
@@ -116,60 +126,156 @@ export default function AccountsPage() {
 
   const openCreate = () => {
     setEditing(null);
-    setName(""); setType("cash"); setColor(ACCOUNT_COLORS[0]);
+    setName(""); setCode(""); setType("cash"); setColor(ACCOUNT_COLORS[0]);
     setAccDialog(true);
   };
   const openEdit = (a: AccountWithBalance) => {
     setEditing(a);
-    setName(a.name); setType(a.type); setColor(a.color);
+    setName(a.name); setCode(a.code || ""); setType(a.type); setColor(a.color);
     setAccDialog(true);
   };
 
   const accName = (id: number) => accounts?.find((a) => a.id === id)?.name ?? "";
 
+  const allAccountsList = (accounts ?? []) as AccountWithBalance[];
+
+  const filteredAccounts = allAccountsList.filter((a) => {
+    const q = searchQuery.toLowerCase().trim();
+    if (q) {
+      const matchName = a.name.toLowerCase().includes(q);
+      const matchNameEn = a.nameEn ? a.nameEn.toLowerCase().includes(q) : false;
+      const matchCode = a.code ? a.code.toLowerCase().includes(q) : false;
+      const matchType = accountTypeLabel(a.type).toLowerCase().includes(q);
+      if (!matchName && !matchNameEn && !matchCode && !matchType) return false;
+    }
+
+    if (selectedCategory === "all") return true;
+    if (selectedCategory === "asset") return a.code?.startsWith("1") || a.type === "cash" || a.type === "bank" || a.type === "asset";
+    if (selectedCategory === "liability") return a.code?.startsWith("2") || a.type === "liability" || a.type === "credit_card";
+    if (selectedCategory === "equity") return a.code?.startsWith("3") || a.type === "equity" || a.type.includes("equity");
+    if (selectedCategory === "income") return a.code?.startsWith("4") || a.type === "income";
+    if (selectedCategory === "expense") return a.code?.startsWith("5") || a.type === "expense";
+    return true;
+  });
+
   return (
     <Layout>
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h1 className="text-2xl font-bold">الحسابات</h1>
-            <p className="text-sm text-muted-foreground">أرصدة حساباتك والتحويلات بينها</p>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <span>دليل الحسابات</span>
+              <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                {allAccountsList.length} حساب
+              </span>
+            </h1>
+            <p className="text-sm text-muted-foreground">شجرة الحسابات المحاسبية والأرصدة اللحظية والتحويلات</p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setTfDialog(true)} className="gap-1.5">
               <ArrowLeftRight className="h-4 w-4" /> تحويل
             </Button>
-            <Button onClick={openCreate} className="gap-1.5">
-              <Plus className="h-4 w-4" /> حساب
+            <Button onClick={openCreate} className="gap-1.5 bg-emerald-600 hover:bg-emerald-700">
+              <Plus className="h-4 w-4" /> حساب جديد
             </Button>
+          </div>
+        </div>
+
+        {/* Search & Category Filter Controls */}
+        <div className="bg-card border rounded-2xl p-3 space-y-3 shadow-xs">
+          <div className="relative">
+            <Search className="absolute right-3.5 top-3.5 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="ابحث برقم الحساب، اسم الحساب، أو الحرف الأول..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pr-10 pl-9 h-11 text-sm bg-background/50 rounded-xl"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute left-3 top-3 p-1 text-muted-foreground hover:text-foreground"
+                aria-label="مسح البحث"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+
+          <div className="flex gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+            {[
+              { id: "all", label: "الكل", count: allAccountsList.length },
+              { id: "asset", label: "1. الأصول", count: allAccountsList.filter(a => a.code?.startsWith("1") || a.type === "cash" || a.type === "bank" || a.type === "asset").length },
+              { id: "liability", label: "2. الالتزامات", count: allAccountsList.filter(a => a.code?.startsWith("2") || a.type === "liability").length },
+              { id: "equity", label: "3. حقوق الملكية", count: allAccountsList.filter(a => a.code?.startsWith("3") || a.type === "equity" || a.type.includes("equity")).length },
+              { id: "income", label: "4. الإيرادات", count: allAccountsList.filter(a => a.code?.startsWith("4") || a.type === "income").length },
+              { id: "expense", label: "5. المصروفات", count: allAccountsList.filter(a => a.code?.startsWith("5") || a.type === "expense").length },
+            ].map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-all border",
+                  selectedCategory === cat.id
+                    ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                    : "bg-muted/50 text-muted-foreground border-transparent hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {cat.label} ({cat.count})
+              </button>
+            ))}
           </div>
         </div>
 
         {isLoading ? (
           <p className="text-center text-sm text-muted-foreground py-10">جارٍ التحميل…</p>
+        ) : filteredAccounts.length === 0 ? (
+          <div className="text-center py-12 border border-dashed rounded-2xl bg-card">
+            <p className="text-muted-foreground font-medium">لم يتم العثور على حساب يطابق بحثك «{searchQuery}»</p>
+            <Button variant="link" onClick={() => { setSearchQuery(""); setSelectedCategory("all"); }} className="mt-2 text-emerald-600">
+              إعادة تعيين البحث
+            </Button>
+          </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {(accounts ?? []).map((a) => (
-              <Card key={a.id} className="overflow-hidden">
+            {filteredAccounts.map((a) => (
+              <Card
+                key={a.id}
+                className="overflow-hidden hover:shadow-md transition-all cursor-pointer border-slate-200 group"
+                onClick={() => openEdit(a)}
+              >
                 <div className="h-1.5" style={{ background: a.color }} />
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className="h-10 w-10 rounded-xl text-white flex items-center justify-center"
+                        className="h-10 w-10 rounded-xl text-white flex items-center justify-center shrink-0 shadow-xs"
                         style={{ background: a.color }}
                       >
                         {TYPE_ICONS[a.type] ?? TYPE_ICONS.other}
                       </div>
-                      <div>
-                        <div className="font-semibold text-sm">{a.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {accountTypeLabel(a.type)}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {a.code && (
+                            <span className="font-mono text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-bold">
+                              {a.code}
+                            </span>
+                          )}
+                          <div className="font-bold text-sm truncate group-hover:text-emerald-600 transition-colors">
+                            {a.name}
+                          </div>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+                          {a.nameEn ? `${a.nameEn} · ` : ""}{accountTypeLabel(a.type)}
+                          {a.level ? ` (م${a.level})` : ""}
                         </div>
                       </div>
                     </div>
-                    <div className="flex">
-                      <button className="p-2 text-muted-foreground hover:text-foreground min-h-[44px]" onClick={() => openEdit(a)} aria-label="تعديل">
+                    <div className="flex shrink-0 -mr-2" onClick={(e) => e.stopPropagation()}>
+                      <button className="p-2 text-muted-foreground hover:text-emerald-600 min-h-[44px]" onClick={() => openEdit(a)} aria-label="تعديل">
                         <Pencil className="h-4 w-4" />
                       </button>
                       <button className="p-2 text-muted-foreground hover:text-rose-600 min-h-[44px]" onClick={() => setDeleting(a)} aria-label="حذف">
@@ -177,8 +283,11 @@ export default function AccountsPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="mt-3 text-xl font-bold tabular-nums" dir="ltr">
-                    {formatMoney(a.balance)}
+                  <div className="mt-3 flex items-baseline justify-between pt-2 border-t border-slate-100">
+                    <span className="text-[11px] text-muted-foreground">الرصيد الحالي:</span>
+                    <div className={cn("text-lg font-bold tabular-nums font-mono", a.balance < 0 ? "text-rose-600" : "text-emerald-700")} dir="ltr">
+                      {formatMoney(a.balance)}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -226,7 +335,11 @@ export default function AccountsPage() {
           </DialogHeader>
           <div className="space-y-1.5">
             <Label>اسم الحساب</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: محفظة" className="h-11" />
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: الصندوق، البنك..." className="h-11" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>رقم / كود الحساب</Label>
+            <Input value={code} onChange={(e) => setCode(e.target.value)} placeholder="مثال: 110101" className="h-11 font-mono" dir="ltr" />
           </div>
           <div className="space-y-1.5">
             <Label>نوع الحساب</Label>
@@ -262,9 +375,9 @@ export default function AccountsPage() {
             onClick={() => {
               if (!name.trim()) return toast.error("أدخل اسم الحساب");
               if (editing) {
-                updateMut.mutate({ id: editing.id, name: name.trim(), type: type as any, color });
+                updateMut.mutate({ id: editing.id, name: name.trim(), code: code.trim() || undefined, type: type as any, color });
               } else {
-                createMut.mutate({ name: name.trim(), type: type as any, color });
+                createMut.mutate({ name: name.trim(), code: code.trim() || undefined, type: type as any, color });
               }
             }}
           >

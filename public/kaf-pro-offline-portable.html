@@ -45,6 +45,7 @@
   <div class="bg-slate-100 border-b border-slate-200 sticky top-16 z-20">
     <div class="max-w-6xl mx-auto px-3 sm:px-4 flex gap-1.5 overflow-x-auto whitespace-nowrap flex-nowrap py-2 text-xs sm:text-sm">
       <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn px-4 py-2 text-sm font-bold rounded-lg bg-emerald-600 text-white shadow-xs">الرئيسية</button>
+      <button onclick="switchTab('accounts')" id="tab-accounts" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-200">دليل الحسابات</button>
       <button onclick="switchTab('vouchers')" id="tab-vouchers" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-200">سندات القبض والصرف</button>
       <button onclick="switchTab('transactions')" id="tab-transactions" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-200">الحركات المالية</button>
       <button onclick="switchTab('contacts')" id="tab-contacts" class="tab-btn px-4 py-2 text-sm font-semibold rounded-lg text-slate-600 hover:bg-slate-200">العملاء والموردين</button>
@@ -114,6 +115,48 @@
           </table>
         </div>
       </div>
+    </section>
+
+    <!-- View: Accounts (دليل الحسابات) -->
+    <section id="view-accounts" class="hidden space-y-4">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h2 class="text-xl font-bold flex items-center gap-2">
+            <span>دليل الحسابات (شجرة الحسابات)</span>
+            <span id="accounts-count-badge" class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">99 حساب</span>
+          </h2>
+          <p class="text-xs text-slate-500">دليل الحسابات المحاسبي المعتمد مع الأرصدة والتصنيف الشجري</p>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="openAccountModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-sm shadow-sm flex items-center gap-1.5">
+            + إضافة حساب جديد
+          </button>
+        </div>
+      </div>
+
+      <!-- Search & Category Filters -->
+      <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-3">
+        <div class="relative">
+          <input
+            type="text"
+            id="acc-search-input"
+            oninput="renderAccounts()"
+            placeholder="ابحث برقم الحساب، اسم الحساب، أو الحرف الأول..."
+            class="w-full px-4 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
+        <div class="flex gap-1.5 overflow-x-auto text-xs pb-1">
+          <button onclick="filterAccountsCat('all')" id="offline-cat-all" class="cat-pill px-3 py-1.5 rounded-lg font-semibold bg-emerald-600 text-white shadow-xs">الكل</button>
+          <button onclick="filterAccountsCat('1')" id="offline-cat-1" class="cat-pill px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">1. الأصول</button>
+          <button onclick="filterAccountsCat('2')" id="offline-cat-2" class="cat-pill px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">2. الالتزامات</button>
+          <button onclick="filterAccountsCat('3')" id="offline-cat-3" class="cat-pill px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">3. حقوق الملكية</button>
+          <button onclick="filterAccountsCat('4')" id="offline-cat-4" class="cat-pill px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">4. الإيرادات</button>
+          <button onclick="filterAccountsCat('5')" id="offline-cat-5" class="cat-pill px-3 py-1.5 rounded-lg font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">5. المصروفات</button>
+        </div>
+      </div>
+
+      <!-- Accounts Cards Grid -->
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-3" id="accounts-grid-body"></div>
     </section>
 
     <!-- View: Vouchers -->
@@ -340,9 +383,154 @@
     </div>
   </div>
 
+  <!-- Modal: Create / Edit Account -->
+  <div id="acc-modal" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b pb-3">
+        <h3 id="acc-modal-title" class="font-bold text-base">إضافة حساب جديد</h3>
+        <button onclick="closeAccountModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+      <form onsubmit="saveAccountForm(event)" class="space-y-3">
+        <input type="hidden" id="form-acc-id">
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">اسم الحساب (عربي) *</label>
+          <input type="text" id="form-acc-name" class="w-full border rounded-lg p-2 text-sm" placeholder="مثال: البنك الأهلي التجاري" required>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-600 mb-1">الاسم بالإنجليزي (اختياري)</label>
+          <input type="text" id="form-acc-name-en" class="w-full border rounded-lg p-2 text-sm" placeholder="e.g. Bank Account" dir="ltr">
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">رقم الحساب (الكود) *</label>
+            <input type="text" id="form-acc-code" class="w-full border rounded-lg p-2 text-sm font-mono" placeholder="مثال: 11010203" dir="ltr" required>
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-600 mb-1">نوع الحساب</label>
+            <select id="form-acc-type" class="w-full border rounded-lg p-2 text-sm">
+              <option value="cash">صندوق / نقدية</option>
+              <option value="bank">حساب بنكي</option>
+              <option value="asset">أصل</option>
+              <option value="liability">التزام / خصم</option>
+              <option value="equity">حقوق ملكية</option>
+              <option value="income">إيراد</option>
+              <option value="expense">مصروف</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t">
+          <button type="button" onclick="closeAccountModal()" class="px-4 py-2 border rounded-lg text-xs font-semibold">إلغاء</button>
+          <button type="submit" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg text-xs shadow-sm">حفظ الحساب</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- JavaScript Engine -->
   <script>
     const STORAGE_KEY = "kaf_pro_accounting_db";
+
+    const DEFAULT_ACCOUNTS = [
+      { id: 1, code: "1", name: "الأصول", nameEn: "Assets", parentCode: "", level: 1, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 2, code: "11", name: "الأصول المتداولة", nameEn: "Current Assets", parentCode: "1", level: 2, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 3, code: "1101", name: "النقد وما في حكمه", nameEn: "Cash and Cash Equivalents", parentCode: "11", level: 3, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#f59e0b", userId: 1 },
+      { id: 4, code: "110101", name: "الصناديق النقدية (الخزينة)", nameEn: "Petty Cash & Vaults", parentCode: "1101", level: 4, type: "cash", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: true, color: "#8b5cf6", userId: 1 },
+      { id: 5, code: "11010101", name: "صندوق المركز الرئيسي", nameEn: "Main Vault Cash", parentCode: "110101", level: 5, type: "cash", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: true, color: "#ec4899", userId: 1 },
+      { id: 6, code: "11010102", name: "العهد النقدية المؤقتة", nameEn: "Temporary Cash Advances", parentCode: "110101", level: 5, type: "cash", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: true, color: "#ef4444", userId: 1 },
+      { id: 7, code: "110102", name: "الحسابات البنكية", nameEn: "Bank Accounts", parentCode: "1101", level: 4, type: "bank", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: true, color: "#14b8a6", userId: 1 },
+      { id: 8, code: "11010201", name: "الحساب الجاري المحلي", nameEn: "Local Current Bank Account", parentCode: "110102", level: 5, type: "bank", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: true, color: "#6366f1", userId: 1 },
+      { id: 9, code: "11010202", name: "الحساب الجاري بالعملات الأجنبية", nameEn: "Foreign Currency Bank Account", parentCode: "110102", level: 5, type: "bank", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: true, color: "#10b981", userId: 1 },
+      { id: 10, code: "1102", name: "الذمم المدينة (العملاء)", nameEn: "Accounts Receivable", parentCode: "11", level: 3, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: true, color: "#0ea5e9", userId: 1 },
+      { id: 11, code: "110201", name: "ذمم العملاء التجاريين", nameEn: "Trade Receivables", parentCode: "1102", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: true, color: "#f59e0b", userId: 1 },
+      { id: 12, code: "11020101", name: "عملاء محليون", nameEn: "Local Customers", parentCode: "110201", level: 5, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: true, color: "#8b5cf6", userId: 1 },
+      { id: 13, code: "11020102", name: "عملاء خارجيون / دوليون", nameEn: "Foreign Customers", parentCode: "110201", level: 5, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: true, color: "#ec4899", userId: 1 },
+      { id: 14, code: "110202", name: "مخصص خسائر الائتمان المتوقعة", nameEn: "Allowance for Expected Credit Losses", parentCode: "1102", level: 4, type: "contra_asset", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 15, code: "1103", name: "أوراق القبض", nameEn: "Notes Receivable", parentCode: "11", level: 3, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: true, color: "#14b8a6", userId: 1 },
+      { id: 16, code: "1104", name: "المخزون السلعي", nameEn: "Inventory", parentCode: "11", level: 3, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 17, code: "110401", name: "مخزون بضاعة تامة الصنع / تجارية", nameEn: "Finished Goods Inventory", parentCode: "1104", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 18, code: "110402", name: "مخزون مواد خام وقطع غيار", nameEn: "Raw Materials & Spare Parts", parentCode: "1104", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 19, code: "110403", name: "بضاعة بالطريق (اعتمادات مستندية)", nameEn: "Goods in Transit / LC", parentCode: "1104", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#f59e0b", userId: 1 },
+      { id: 20, code: "1105", name: "أرصدة مدينة أخرى ومصروفات مقدمة", nameEn: "Prepayments & Other Receivables", parentCode: "11", level: 3, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#8b5cf6", userId: 1 },
+      { id: 21, code: "110501", name: "إيجارات مدفوعة مقدماً", nameEn: "Prepaid Rent", parentCode: "1105", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 22, code: "110502", name: "تأمينات مدفوعة مقدماً", nameEn: "Prepaid Insurance", parentCode: "1105", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 23, code: "110503", name: "سلفيات وأمانات الموظفين", nameEn: "Employee Advances & Deposits", parentCode: "1105", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: true, color: "#14b8a6", userId: 1 },
+      { id: 24, code: "12", name: "الأصول غير المتداولة", nameEn: "Non-Current Assets", parentCode: "1", level: 2, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 25, code: "1201", name: "الأصول الثابتة الملموسة", nameEn: "Property, Plant & Equipment", parentCode: "12", level: 3, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 26, code: "120101", name: "الأراضي", nameEn: "Land", parentCode: "1201", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 27, code: "120102", name: "المباني والإنشاءات", nameEn: "Buildings & Improvements", parentCode: "1201", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#f59e0b", userId: 1 },
+      { id: 28, code: "120103", name: "الآلات والمعدات", nameEn: "Machinery & Equipment", parentCode: "1201", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#8b5cf6", userId: 1 },
+      { id: 29, code: "120104", name: "أجهزة الحاسب والشبكات", nameEn: "IT Equipment & Networks", parentCode: "1201", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 30, code: "120105", name: "السيارات ووسائل النقل", nameEn: "Vehicles & Transport", parentCode: "1201", level: 4, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 31, code: "1202", name: "مجمعات إهلاك الأصول الثابتة", nameEn: "Accumulated Depreciation", parentCode: "12", level: 3, type: "contra_asset", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#14b8a6", userId: 1 },
+      { id: 32, code: "120202", name: "مجمع إهلاك المباني", nameEn: "Acc. Dep. - Buildings", parentCode: "1202", level: 4, type: "contra_asset", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 33, code: "120203", name: "مجمع إهلاك الآلات والمعدات", nameEn: "Acc. Dep. - Machinery", parentCode: "1202", level: 4, type: "contra_asset", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 34, code: "120204", name: "مجمع إهلاك أجهزة الحاسب", nameEn: "Acc. Dep. - IT Equipment", parentCode: "1202", level: 4, type: "contra_asset", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 35, code: "120205", name: "مجمع إهلاك السيارات والناقلات", nameEn: "Acc. Dep. - Vehicles", parentCode: "1202", level: 4, type: "contra_asset", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#f59e0b", userId: 1 },
+      { id: 36, code: "1203", name: "مشروعات تحت التنفيذ", nameEn: "Capital Work in Progress (CWIP)", parentCode: "12", level: 3, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#8b5cf6", userId: 1 },
+      { id: 37, code: "1204", name: "الأصول غير الملموسة", nameEn: "Intangible Assets & Software", parentCode: "12", level: 3, type: "asset", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 38, code: "2", name: "الالتزامات", nameEn: "Liabilities", parentCode: "", level: 1, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 39, code: "21", name: "الالتزامات المتداولة", nameEn: "Current Liabilities", parentCode: "2", level: 2, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#14b8a6", userId: 1 },
+      { id: 40, code: "2101", name: "الذمم الدائنة (الموردون)", nameEn: "Accounts Payable", parentCode: "21", level: 3, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: true, color: "#6366f1", userId: 1 },
+      { id: 41, code: "210101", name: "موردو البضائع والمواد", nameEn: "Trade Suppliers", parentCode: "2101", level: 4, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: true, color: "#10b981", userId: 1 },
+      { id: 42, code: "210102", name: "موردو الخدمات والمقاولون", nameEn: "Service Providers & Contractors", parentCode: "2101", level: 4, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: true, color: "#0ea5e9", userId: 1 },
+      { id: 43, code: "2102", name: "أوراق الدفع", nameEn: "Notes Payable", parentCode: "21", level: 3, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: true, color: "#f59e0b", userId: 1 },
+      { id: 44, code: "2103", name: "المصروفات المستحقة والأرصدة الدائنة", nameEn: "Accrued Expenses & Payables", parentCode: "21", level: 3, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#8b5cf6", userId: 1 },
+      { id: 45, code: "210301", name: "رواتب وأجور مستحقة", nameEn: "Accrued Salaries & Wages", parentCode: "2103", level: 4, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 46, code: "210302", name: "إيجارات ومصروفات مستحقة", nameEn: "Accrued Rent & Utilities", parentCode: "2103", level: 4, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 47, code: "210303", name: "تأمينات اجتماعية مستحقة", nameEn: "Social Insurance Payable", parentCode: "2103", level: 4, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#14b8a6", userId: 1 },
+      { id: 48, code: "2104", name: "الإيرادات المقبوضة مقدماً", nameEn: "Unearned Revenues / Contract Liabilities", parentCode: "21", level: 3, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 49, code: "2105", name: "المستحقات والضمانات الضريبية", nameEn: "Tax Payables (VAT / Income)", parentCode: "21", level: 3, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 50, code: "210501", name: "ضريبة القيمة المضافة المحصلة (مخرجات)", nameEn: "Output VAT Payable", parentCode: "2105", level: 4, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 51, code: "210502", name: "تسويات ضريبة القيمة المضافة", nameEn: "VAT Settlement Account", parentCode: "2105", level: 4, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#f59e0b", userId: 1 },
+      { id: 52, code: "2106", name: "تسهيلات وقروض قصيرة الأجل", nameEn: "Short-Term Bank Facilities", parentCode: "21", level: 3, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: true, color: "#8b5cf6", userId: 1 },
+      { id: 53, code: "22", name: "الالتزامات غير المتداولة", nameEn: "Non-Current Liabilities", parentCode: "2", level: 2, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 54, code: "2201", name: "قروض وتمويلات طويلة الأجل", nameEn: "Long-Term Loans & Financing", parentCode: "22", level: 3, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: true, color: "#ef4444", userId: 1 },
+      { id: 55, code: "2202", name: "مخصص مكافأة نهاية الخدمة", nameEn: "End of Service Benefits Provision", parentCode: "22", level: 3, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#14b8a6", userId: 1 },
+      { id: 56, code: "2203", name: "التزامات عقود الإيجار التمويلي", nameEn: "Lease Liabilities (Long-Term)", parentCode: "22", level: 3, type: "liability", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 57, code: "3", name: "حقوق الملكية", nameEn: "Equity", parentCode: "", level: 1, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 58, code: "31", name: "رأس المال والاحتياطيات", nameEn: "Capital & Reserves", parentCode: "3", level: 2, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 59, code: "3101", name: "رأس المال المدفوع", nameEn: "Paid-in Capital", parentCode: "31", level: 3, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#f59e0b", userId: 1 },
+      { id: 60, code: "310101", name: "حصة الشريك الأول", nameEn: "Partner A Capital", parentCode: "3101", level: 4, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#8b5cf6", userId: 1 },
+      { id: 61, code: "310102", name: "حصة الشريك الثاني", nameEn: "Partner B Capital", parentCode: "3101", level: 4, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 62, code: "3102", name: "الاحتياطي النظامي", nameEn: "Statutory / Legal Reserve", parentCode: "31", level: 3, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 63, code: "3103", name: "الاحتياطي العام والاتفاقي", nameEn: "General Reserve", parentCode: "31", level: 3, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#14b8a6", userId: 1 },
+      { id: 64, code: "3104", name: "الأرباح المبقاة (المحتجزة)", nameEn: "Retained Earnings", parentCode: "31", level: 3, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 65, code: "3105", name: "أرباح (خسائر) العام الحالي", nameEn: "Current Year Profit / Loss", parentCode: "31", level: 3, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 66, code: "3106", name: "جاري الشركاء والمسحوبات", nameEn: "Partners Current & Drawings", parentCode: "31", level: 3, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 67, code: "310601", name: "جاري الشريك (أ)", nameEn: "Partner A Current Account", parentCode: "3106", level: 4, type: "equity", financialStatement: "Balance Sheet", normalBalance: "Credit", isPostable: true, isReconciled: true, color: "#f59e0b", userId: 1 },
+      { id: 68, code: "310602", name: "مسحوبات الشركاء الشخصية", nameEn: "Partner Drawings", parentCode: "3106", level: 4, type: "contra_equity", financialStatement: "Balance Sheet", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#8b5cf6", userId: 1 },
+      { id: 69, code: "4", name: "الإيرادات", nameEn: "Revenues", parentCode: "", level: 1, type: "income", financialStatement: "Income Statement", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 70, code: "41", name: "الإيرادات التشغيلية الرئيسية", nameEn: "Operating Revenues", parentCode: "4", level: 2, type: "income", financialStatement: "Income Statement", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 71, code: "4101", name: "إيرادات مبيعات السلع والمنتجات", nameEn: "Sales Revenue - Goods", parentCode: "41", level: 3, type: "income", financialStatement: "Income Statement", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#14b8a6", userId: 1 },
+      { id: 72, code: "4102", name: "إيرادات تقديم الخدمات والحلول", nameEn: "Service & Consulting Revenues", parentCode: "41", level: 3, type: "income", financialStatement: "Income Statement", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 73, code: "4103", name: "مردودات ومسموحات المبيعات", nameEn: "Sales Returns & Allowances", parentCode: "41", level: 3, type: "contra_revenue", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 74, code: "4104", name: "الخصم المسموح به", nameEn: "Discounts Allowed", parentCode: "41", level: 3, type: "contra_revenue", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 75, code: "42", name: "إيرادات غير تشغيلية وأخرى", nameEn: "Other & Non-Operating Income", parentCode: "4", level: 2, type: "income", financialStatement: "Income Statement", normalBalance: "Credit", isPostable: false, isReconciled: false, color: "#f59e0b", userId: 1 },
+      { id: 76, code: "4201", name: "أرباح بيع أصول ثابتة", nameEn: "Gain on Disposal of Fixed Assets", parentCode: "42", level: 3, type: "income", financialStatement: "Income Statement", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#8b5cf6", userId: 1 },
+      { id: 77, code: "4202", name: "أرباح فروق أسعار الصرف", nameEn: "Realized/Unrealized FX Gains", parentCode: "42", level: 3, type: "income", financialStatement: "Income Statement", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 78, code: "4203", name: "إيرادات استثمارات وعوائد أخرى", nameEn: "Investment & Miscellaneous Income", parentCode: "42", level: 3, type: "income", financialStatement: "Income Statement", normalBalance: "Credit", isPostable: true, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 79, code: "5", name: "التكاليف والمصروفات", nameEn: "Costs & Expenses", parentCode: "", level: 1, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#14b8a6", userId: 1 },
+      { id: 80, code: "51", name: "تكلفة الإيرادات / تكلفة البضاعة المباعة", nameEn: "Cost of Goods Sold (COGS)", parentCode: "5", level: 2, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 81, code: "5101", name: "تكلفة المواد الخام والمشتريات", nameEn: "Direct Materials & Purchases", parentCode: "51", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 82, code: "5102", name: "مصاريف شحن وتخليص جمركي للمشتريات", nameEn: "Freight-In & Customs Duties", parentCode: "51", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 83, code: "5103", name: "الأجور المباشرة وتكاليف العمالة التشغيلية", nameEn: "Direct Labor", parentCode: "51", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#f59e0b", userId: 1 },
+      { id: 84, code: "5104", name: "تكاليف تشغيلية واستضافة سحابية مباشرة", nameEn: "Direct Cloud & Operational Tech Costs", parentCode: "51", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#8b5cf6", userId: 1 },
+      { id: 85, code: "52", name: "المصروفات البيعية والتسويقية", nameEn: "Selling & Marketing Expenses", parentCode: "5", level: 2, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 86, code: "5201", name: "الحملات الإعلانية والتسويق الرقمي", nameEn: "Digital Marketing & Advertising", parentCode: "52", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 87, code: "5202", name: "عمولات البيع ومكافآت المبيعات", nameEn: "Sales Commissions & Bonuses", parentCode: "52", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#14b8a6", userId: 1 },
+      { id: 88, code: "5203", name: "مصاريف المعارض والضيافة الترويجية", nameEn: "Exhibitions & Promotions", parentCode: "52", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 89, code: "53", name: "المصروفات العمومية والإدارية", nameEn: "General & Administrative (G&A)", parentCode: "5", level: 2, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 90, code: "5301", name: "الرواتب والأجور الأساسية للإدارة", nameEn: "Management Salaries & Wages", parentCode: "53", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 91, code: "5302", name: "بدلات ومكافآت وتأمينات الموظفين", nameEn: "Employee Allowances & Insurance", parentCode: "53", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#f59e0b", userId: 1 },
+      { id: 92, code: "5303", name: "إيجار المقرات والمكاتب", nameEn: "Office & Facility Rent", parentCode: "53", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#8b5cf6", userId: 1 },
+      { id: 93, code: "5304", name: "خدمات المرافق (كهرباء، مياه، اتصالات)", nameEn: "Utilities & Telecommunications", parentCode: "53", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#ec4899", userId: 1 },
+      { id: 94, code: "5305", name: "تراخيص ورسوم حكومية واستشارات مهنية", nameEn: "Licenses, Government Fees & Legal", parentCode: "53", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#ef4444", userId: 1 },
+      { id: 95, code: "5306", name: "مصروفات إهلاك الأصول الثابتة", nameEn: "Depreciation Expense", parentCode: "53", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#14b8a6", userId: 1 },
+      { id: 96, code: "5307", name: "أدوات مكتبية ومطبوعات وضيافة داخلية", nameEn: "Office Supplies & Refreshments", parentCode: "53", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#6366f1", userId: 1 },
+      { id: 97, code: "54", name: "المصروفات المالية والأخرى", nameEn: "Financial & Other Expenses", parentCode: "5", level: 2, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: false, isReconciled: false, color: "#10b981", userId: 1 },
+      { id: 98, code: "5401", name: "الرسوم والعمولات البنكية", nameEn: "Bank Charges & Commissions", parentCode: "54", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#0ea5e9", userId: 1 },
+      { id: 99, code: "5402", name: "خسائر فروق أسعار الصرف", nameEn: "Realized/Unrealized FX Losses", parentCode: "54", level: 3, type: "expense", financialStatement: "Income Statement", normalBalance: "Debit", isPostable: true, isReconciled: false, color: "#f59e0b", userId: 1 }
+    ];
 
     const defaultData = {
       company: {
@@ -353,6 +541,7 @@
         phone: "+966 50 123 4567",
         address: "طريق الملك فهد، حي الصحافة - الرياض"
       },
+      accounts: DEFAULT_ACCOUNTS,
       vouchers: [
         { id: 1, number: "RV-001", type: "receipt", date: "2026-10-01", amount: "15000.00", contactName: "مؤسسة الأفق للتجارة", paymentMethod: "cash", referenceNo: "REC-7891", description: "استلام دفعة نقدية عهدة مشروع" },
         { id: 2, number: "RV-002", type: "receipt", date: "2026-10-02", amount: "38500.00", contactName: "شركة نماء الخليج للتطوير", paymentMethod: "transfer", referenceNo: "TR-445588", description: "سداد دفعة العقد الاستشاري الأول" },
@@ -377,7 +566,12 @@
           localStorage.setItem(STORAGE_KEY, JSON.stringify(defaultData));
           return defaultData;
         }
-        return JSON.parse(raw);
+        const parsed = JSON.parse(raw);
+        if (!parsed.accounts || parsed.accounts.length < 50) {
+          parsed.accounts = DEFAULT_ACCOUNTS;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        }
+        return parsed;
       } catch (e) {
         return defaultData;
       }
@@ -401,9 +595,175 @@
         activeBtn.classList.remove('text-slate-600');
       }
       if (tab === 'company') loadCompanyForm();
+      if (tab === 'accounts') renderAccounts();
+    }
+
+    let currentAccountCatFilter = 'all';
+
+    function filterAccountsCat(cat) {
+      currentAccountCatFilter = cat;
+      document.querySelectorAll('.cat-pill').forEach(b => {
+        b.classList.remove('bg-emerald-600', 'text-white', 'shadow-xs');
+        b.classList.add('bg-slate-100', 'text-slate-600');
+      });
+      const activeBtn = document.getElementById('offline-cat-' + cat);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-emerald-600', 'text-white', 'shadow-xs');
+        activeBtn.classList.remove('bg-slate-100', 'text-slate-600');
+      }
+      renderAccounts();
+    }
+
+    function computeAccountBalances(db) {
+      const balances = {};
+      (db.accounts || []).forEach(a => { balances[a.id] = 0; });
+      (db.transactions || []).forEach(t => {
+        const amt = parseFloat(t.amount) || 0;
+        const accId = t.accountId || 1;
+        balances[accId] = (balances[accId] || 0) + (t.kind === 'income' ? amt : -amt);
+      });
+      return balances;
+    }
+
+    function renderAccounts() {
+      const db = getDb();
+      const accounts = db.accounts || DEFAULT_ACCOUNTS;
+      const search = (document.getElementById('acc-search-input')?.value || '').toLowerCase().trim();
+      const balances = computeAccountBalances(db);
+
+      const filtered = accounts.filter(a => {
+        if (search) {
+          const matchName = (a.name || '').toLowerCase().includes(search);
+          const matchNameEn = (a.nameEn || '').toLowerCase().includes(search);
+          const matchCode = (a.code || '').toLowerCase().includes(search);
+          if (!matchName && !matchNameEn && !matchCode) return false;
+        }
+        if (currentAccountCatFilter === 'all') return true;
+        if (currentAccountCatFilter === '1') return a.code && a.code.startsWith('1');
+        if (currentAccountCatFilter === '2') return a.code && a.code.startsWith('2');
+        if (currentAccountCatFilter === '3') return a.code && a.code.startsWith('3');
+        if (currentAccountCatFilter === '4') return a.code && a.code.startsWith('4');
+        if (currentAccountCatFilter === '5') return a.code && a.code.startsWith('5');
+        return true;
+      });
+
+      const countBadge = document.getElementById('accounts-count-badge');
+      if (countBadge) countBadge.textContent = `${accounts.length} حساب معتمد`;
+
+      const grid = document.getElementById('accounts-grid-body');
+      if (!grid) return;
+
+      if (filtered.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-12 text-center bg-white border border-dashed rounded-xl text-slate-500">
+            لا توجد حسابات تطابق البحث «${search}»
+          </div>
+        `;
+        return;
+      }
+
+      grid.innerHTML = filtered.map(a => {
+        const bal = balances[a.id] || 0;
+        const color = a.color || '#10b981';
+        return `
+          <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-xs hover:shadow-md transition-shadow group p-4 flex flex-col justify-between cursor-pointer" onclick="openAccountModal(${a.id})">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">${a.code || '-'}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full font-semibold" style="background:${color}20; color:${color}">
+                    ${a.type === 'cash' ? 'نقدية' : a.type === 'bank' ? 'بنك' : a.type === 'asset' ? 'أصل' : a.type === 'liability' ? 'التزام' : a.type === 'equity' ? 'ملكية' : a.type === 'income' ? 'إيراد' : 'مصروف'}
+                  </span>
+                </div>
+                <div class="flex gap-1" onclick="event.stopPropagation()">
+                  <button onclick="openAccountModal(${a.id})" class="text-slate-400 hover:text-emerald-600 p-1 text-xs">✏️</button>
+                  <button onclick="deleteAccount(${a.id})" class="text-slate-400 hover:text-rose-600 p-1 text-xs">🗑️</button>
+                </div>
+              </div>
+              <h4 class="font-bold text-sm text-slate-800 mt-2 group-hover:text-emerald-600 transition-colors">${a.name}</h4>
+              <p class="text-[11px] text-slate-400 font-sans" dir="ltr">${a.nameEn || ''}</p>
+            </div>
+            <div class="mt-4 pt-2 border-t border-slate-100 flex items-center justify-between">
+              <span class="text-xs text-slate-500">الرصيد:</span>
+              <span class="font-bold font-mono text-sm ${bal < 0 ? 'text-rose-600' : 'text-emerald-700'}">${bal.toLocaleString('en-US', { minimumFractionDigits: 2 })} ر.س</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openAccountModal(id) {
+      const db = getDb();
+      if (id) {
+        const acc = (db.accounts || []).find(a => a.id === id);
+        if (acc) {
+          document.getElementById('acc-modal-title').textContent = 'تعديل الحساب';
+          document.getElementById('form-acc-id').value = acc.id;
+          document.getElementById('form-acc-name').value = acc.name || '';
+          document.getElementById('form-acc-name-en').value = acc.nameEn || '';
+          document.getElementById('form-acc-code').value = acc.code || '';
+          document.getElementById('form-acc-type').value = acc.type || 'asset';
+        }
+      } else {
+        document.getElementById('acc-modal-title').textContent = 'إضافة حساب جديد';
+        document.getElementById('form-acc-id').value = '';
+        document.getElementById('form-acc-name').value = '';
+        document.getElementById('form-acc-name-en').value = '';
+        document.getElementById('form-acc-code').value = '';
+        document.getElementById('form-acc-type').value = 'cash';
+      }
+      document.getElementById('acc-modal').classList.remove('hidden');
+    }
+
+    function closeAccountModal() {
+      document.getElementById('acc-modal').classList.add('hidden');
+    }
+
+    function saveAccountForm(e) {
+      e.preventDefault();
+      const db = getDb();
+      if (!db.accounts) db.accounts = [...DEFAULT_ACCOUNTS];
+
+      const id = document.getElementById('form-acc-id').value;
+      const name = document.getElementById('form-acc-name').value.trim();
+      const nameEn = document.getElementById('form-acc-name-en').value.trim();
+      const code = document.getElementById('form-acc-code').value.trim();
+      const type = document.getElementById('form-acc-type').value;
+
+      if (id) {
+        const idx = db.accounts.findIndex(a => a.id == id);
+        if (idx !== -1) {
+          db.accounts[idx] = { ...db.accounts[idx], name, nameEn, code, type };
+        }
+      } else {
+        const nextId = db.accounts.length > 0 ? Math.max(...db.accounts.map(a => a.id || 0)) + 1 : 1;
+        db.accounts.push({
+          id: nextId,
+          code,
+          name,
+          nameEn,
+          type,
+          level: code.length <= 2 ? 2 : code.length <= 4 ? 3 : 4,
+          color: '#10b981',
+          userId: 1
+        });
+      }
+
+      saveDb(db);
+      closeAccountModal();
+      renderAccounts();
+    }
+
+    function deleteAccount(id) {
+      if (!confirm('هل أنت متأكد من حذف هذا الحساب؟')) return;
+      const db = getDb();
+      db.accounts = (db.accounts || []).filter(a => a.id !== id);
+      saveDb(db);
+      renderAccounts();
     }
 
     function render() {
+      renderAccounts();
       const db = getDb();
       
       // Calculate Stats

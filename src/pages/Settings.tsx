@@ -95,9 +95,45 @@ export default function SettingsPage() {
         return toast.error(t("ملف النسخة الاحتياطية غير صالح", "Invalid backup file"));
       }
       if (!confirm(t("سيتم استبدال جميع بياناتك الحالية بمحتوى النسخة الاحتياطية. هل أنت متأكد؟", "Current data will be replaced. Continue?"))) return;
-      restoreMut.mutate({});
+      restoreMut.mutate(data);
     } catch {
       toast.error(t("تعذر قراءة الملف", "Could not read file"));
+    }
+  };
+
+  const doDownloadOfflinePackage = async () => {
+    try {
+      const clientId = localStorage.getItem("kaf_pro_active_client_id") || "client_main";
+      const storageKey = clientId === "client_main" ? "kaf_pro_accounting_db" : `kaf_pro_client_${clientId}_db`;
+      const raw = localStorage.getItem(storageKey);
+      let clientDb = raw ? JSON.parse(raw) : null;
+
+      const res = await fetch("/kaf-pro-offline-portable.html");
+      let htmlText = await res.text();
+
+      if (clientDb) {
+        const injection = `\n    // Injected Client Package Configuration\n    window.__INJECTED_CLIENT_DB__ = ${JSON.stringify(clientDb)};\n`;
+        htmlText = htmlText.replace("const defaultData =", `${injection}    const defaultData = window.__INJECTED_CLIENT_DB__ ||`);
+      }
+
+      const blob = new Blob([htmlText], { type: "text/html;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      const clientName = clientDb?.company?.name || clientDb?.user?.name || "client";
+      const safeName = clientName.replace(/[/\\?%*:|"<>]/g, "-").trim();
+      link.href = url;
+      link.download = `kaf-pro-${safeName}.html`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      toast.success(t(`تم تحميل نسخة العميل المستقلة (${clientName}) شاملة دليل الحسابات!`, "Offline client package downloaded!"));
+    } catch {
+      const a = document.createElement("a");
+      a.href = "/kaf-pro-offline-portable.html";
+      a.download = "kaf-pro-offline-portable.html";
+      a.click();
     }
   };
 
@@ -273,15 +309,15 @@ export default function SettingsPage() {
                 {t("استعادة نسخة احتياطية", "Restore Backup")}
               </Button>
 
-              <a
-                href="/kaf-pro-offline-portable.html"
-                download="kaf-pro-offline-portable.html"
-                className="inline-flex items-center gap-2 px-3 py-2 border rounded-md text-sm font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200 transition-colors"
+              <Button
+                onClick={doDownloadOfflinePackage}
+                variant="outline"
+                className="gap-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
                 title={t("تحميل ملف مستقل لإرساله للعميل ليعمل محلياً بدون إنترنت", "Download offline client file")}
               >
                 <Download className="h-4 w-4" />
                 {t("📥 تحميل نسخة العميل المستقلة (Offline HTML)", "📥 Download Offline Client Package")}
-              </a>
+              </Button>
 
               <input
                 ref={fileRef}

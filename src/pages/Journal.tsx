@@ -205,7 +205,7 @@ export default function JournalPage() {
             </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3 sm:space-y-2">
             <div className="hidden sm:grid grid-cols-[1fr_110px_110px_36px] gap-2 text-xs font-semibold text-muted-foreground px-1">
               <span>الحساب</span>
               <span className="text-center">مدين</span>
@@ -213,52 +213,56 @@ export default function JournalPage() {
               <span />
             </div>
             {lines.map((l, i) => (
-              <div key={i} className="grid grid-cols-[1fr_80px_80px_36px] sm:grid-cols-[1fr_110px_110px_36px] gap-2 items-center">
-                <AccountCombobox
-                  accounts={accounts}
+              <div key={i} className="flex flex-col sm:grid sm:grid-cols-[1fr_110px_110px_36px] gap-2 items-start sm:items-center bg-muted/20 sm:bg-transparent p-3 sm:p-0 rounded-xl sm:rounded-none border sm:border-0">
+                <div className="w-full">
+                  <AccountCombobox
+                    accounts={accounts}
                   value={l.accountId}
                   onChange={(v) =>
                     setLines((ls) => ls.map((x, j) => (j === i ? { ...x, accountId: v } : x)))
                   }
                   placeholder="الحساب"
                 />
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  dir="ltr"
-                  className="h-11"
-                  value={l.debit}
-                  onChange={(e) =>
-                    setLines((ls) => ls.map((x, j) => (j === i ? { ...x, debit: e.target.value, credit: e.target.value ? "" : x.credit } : x)))
-                  }
-                />
-                <Input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  dir="ltr"
-                  className="h-11"
-                  value={l.credit}
-                  onChange={(e) =>
-                    setLines((ls) => ls.map((x, j) => (j === i ? { ...x, credit: e.target.value, debit: e.target.value ? "" : x.debit } : x)))
-                  }
-                />
-                <button
-                  className="p-2 text-muted-foreground hover:text-rose-600 disabled:opacity-30 min-h-[44px]"
-                  disabled={lines.length <= 2}
-                  onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}
-                  aria-label="حذف السطر"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                </div>
+                <div className="flex w-full sm:w-auto gap-2 items-center">
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    placeholder="مدين 0.00"
+                    dir="ltr"
+                    className="h-11 flex-1"
+                    value={l.debit}
+                    onChange={(e) =>
+                      setLines((ls) => ls.map((x, j) => (j === i ? { ...x, debit: e.target.value, credit: e.target.value ? "" : x.credit } : x)))
+                    }
+                  />
+                  <Input
+                    type="number"
+                    inputMode="decimal"
+                    min="0"
+                    step="0.01"
+                    placeholder="دائن 0.00"
+                    dir="ltr"
+                    className="h-11 flex-1"
+                    value={l.credit}
+                    onChange={(e) =>
+                      setLines((ls) => ls.map((x, j) => (j === i ? { ...x, credit: e.target.value, debit: e.target.value ? "" : x.debit } : x)))
+                    }
+                  />
+                  <button
+                    className="p-2 shrink-0 text-muted-foreground hover:text-rose-600 disabled:opacity-30 min-h-[44px] flex items-center justify-center bg-background rounded-lg border sm:border-0 sm:bg-transparent"
+                    disabled={lines.length <= 2}
+                    onClick={() => setLines((ls) => ls.filter((_, j) => j !== i))}
+                    aria-label="حذف السطر"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             ))}
-            <Button variant="outline" size="sm" onClick={() => setLines((ls) => [...ls, emptyLine()])} className="gap-1">
+            <Button variant="outline" size="sm" onClick={() => setLines((ls) => [...ls, emptyLine()])} className="gap-1 w-full sm:w-auto mt-2">
               <Plus className="h-4 w-4" /> إضافة سطر
             </Button>
           </div>
