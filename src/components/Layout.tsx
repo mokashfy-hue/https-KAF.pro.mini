@@ -189,10 +189,50 @@ export default function Layout({
                 </button>
               );
             })}
+
+            {/* Desktop Sidebar Designer & Owner Branding */}
+            <div className="pt-5 mt-5 border-t border-border/60">
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent border border-emerald-500/20 text-center">
+                <div className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground font-semibold">
+                  <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+                  <span>{t("المصمم والمالك للتطبيق", "Designer & Owner")}</span>
+                </div>
+                <div className="font-black text-sm text-emerald-800 dark:text-emerald-300 mt-1">
+                  شركة المكاشفى
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                  Al-Mokashfy Co. © 2026
+                </div>
+              </div>
+            </div>
           </nav>
         </aside>
 
-        <main className="flex-1 px-4 pt-4 pb-28 lg:pb-10 min-w-0">{children}</main>
+        <main className="flex-1 px-4 pt-4 pb-28 lg:pb-12 min-w-0 flex flex-col justify-between">
+          <div className="flex-1">{children}</div>
+
+          {/* Global Page Footer: Designer and Owner Branding Mark */}
+          <footer className="mt-12 pt-6 pb-4 border-t border-border/70 text-center">
+            <div className="flex flex-col items-center justify-center gap-2">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-xs text-emerald-900 dark:text-emerald-300 font-bold shadow-2xs">
+                <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>{t("المصمم والمالك للتطبيق", "Designer & Owner of Application")}</span>
+              </div>
+              <div className="text-base sm:text-lg font-black text-foreground tracking-tight flex items-center justify-center gap-2">
+                <span>شركة المكاشفى</span>
+                <span className="text-xs px-2 py-0.5 rounded-md bg-muted text-muted-foreground font-mono font-semibold" dir="ltr">
+                  Al-Mokashfy Co.
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                {t(
+                  "كاف برو للأنظمة والحلول المالية والمحاسبية — جميع الحقوق محفوظة ومسجلة © 2026 لشركة المكاشفى",
+                  "KAF PRO ERP & Financial Solutions — All Rights Reserved © 2026 Al-Mokashfy Co."
+                )}
+              </p>
+            </div>
+          </footer>
+        </main>
       </div>
 
       {/* Mobile Drawer (Sheet) listing ALL Units on mobile */}
@@ -308,6 +348,22 @@ export default function Layout({
                 <LogOut className="h-3.5 w-3.5 text-rose-600" />
                 <span>{t("خروج", "Log Out")}</span>
               </button>
+            </div>
+
+            {/* Owner & Designer Mark inside Drawer */}
+            <div className="pt-2 border-t border-border/50 text-center">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
+                <div className="flex items-center justify-center gap-1 text-[10px] text-emerald-800 dark:text-emerald-300 font-semibold">
+                  <ShieldCheck className="h-3 w-3 text-emerald-600" />
+                  <span>{t("المصمم والمالك للتطبيق", "Designer & Owner")}</span>
+                </div>
+                <div className="font-extrabold text-xs text-foreground mt-0.5">
+                  شركة المكاشفى
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  جميع الحقوق محفوظة © 2026
+                </div>
+              </div>
             </div>
           </div>
         </SheetContent>

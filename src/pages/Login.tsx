@@ -344,6 +344,20 @@ export default function Login() {
               كل عميل يتم تخصيص قاعدة بيانات مستقلة له تماماً، بحيث لا يستطيع أي عميل آخر رؤية حساباتك أو قيودك أو سنداتك.
             </p>
           </div>
+
+          {/* Designer & Owner Branding */}
+          <div className="pt-3 border-t border-slate-100 text-center space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[11px] text-slate-700 font-bold">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              <span>المصمم والمالك للتطبيق</span>
+            </div>
+            <div className="font-black text-sm text-slate-900">
+              شركة المكاشفى
+            </div>
+            <div className="text-[10px] text-muted-foreground">
+              كاف برو للأنظمة المالية والمحاسبية — جميع الحقوق محفوظة © 2026
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

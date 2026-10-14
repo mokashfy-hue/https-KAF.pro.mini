@@ -332,6 +332,49 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* ── 4. Designer & Owner Branding ── */}
+        <Card className="border-emerald-500/25 bg-gradient-to-br from-emerald-500/5 via-card to-card">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                {t("بيانات المصمم والمالك للتطبيق", "Designer & Owner of the Application")}
+              </span>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">
+                🔒 موثق ومعتمد
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-3 rounded-xl bg-card border">
+                <div className="text-[11px] text-muted-foreground">{t("المصمم والمالك الرسمي", "Official Designer & Owner")}</div>
+                <div className="text-base font-black text-emerald-800 dark:text-emerald-300 mt-0.5">شركة المكاشفى</div>
+                <div className="text-[10px] text-muted-foreground font-mono" dir="ltr">Al-Mokashfy Co.</div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-card border">
+                <div className="text-[11px] text-muted-foreground">{t("اسم النظام والحل المحاسبي", "System & ERP Name")}</div>
+                <div className="text-sm font-bold text-foreground mt-0.5">كاف برو المحاسبي (KAF PRO)</div>
+                <div className="text-[10px] text-emerald-600 font-semibold">{t("الإصدار المعتمد 2.5.0", "Release v2.5.0")}</div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-card border">
+                <div className="text-[11px] text-muted-foreground">{t("حقوق الملكية الفكرية", "Intellectual Property")}</div>
+                <div className="text-sm font-bold text-foreground mt-0.5">{t("مرخص ومحمي بالكامل", "Fully Licensed & Protected")}</div>
+                <div className="text-[10px] text-muted-foreground">© 2026 شركة المكاشفى</div>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground leading-relaxed pt-1">
+              {t(
+                "هذا التطبيق مصمم ومطور ومملوك بالكامل لـ شركة المكاشفى. جميع الحقوق والبرمجيات وقواعد البيانات والتصميمات محفوظة ومحمية بموجب أنظمة حماية حقوق الملكية الفكرية والعلامات التجارية.",
+                "This application is designed, developed, and owned exclusively by Al-Mokashfy Co. All rights, software, and designs are fully protected."
+              )}
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </Layout>
   );
