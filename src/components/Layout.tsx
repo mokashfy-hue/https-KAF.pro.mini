@@ -3,7 +3,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { LOGIN_PATH } from "@/const";
 import { cn } from "@/lib/utils";
 import { useState, type ReactNode } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { useLocation, useNavigate, Navigate } from "react-router";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   BookOpen,
@@ -78,8 +78,7 @@ export default function Layout({
   }
 
   if (!user) {
-    navigate(LOGIN_PATH);
-    return null;
+    return <Navigate to={LOGIN_PATH} replace />;
   }
 
   const UserMenu = (

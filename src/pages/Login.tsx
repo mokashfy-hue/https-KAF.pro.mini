@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useNavigate, Navigate } from "react-router";
+import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +26,7 @@ import { cn } from "@/lib/utils";
 export default function Login() {
   const navigate = useNavigate();
   const utils = trpc.useUtils();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
 
   const [activeTab, setActiveTab] = useState<"login" | "register">("login");
 
@@ -49,9 +51,9 @@ export default function Login() {
 
   // Mutations
   const loginMutation = (trpc as any).auth.clients.login.useMutation({
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       toast.success(`مرحباً بك! تم الدخول إلى مساحة: ${data.client.name}`);
-      utils.invalidate();
+      await utils.invalidate();
       navigate("/");
     },
     onError: (err: any) => {
@@ -60,15 +62,19 @@ export default function Login() {
   });
 
   const registerMutation = (trpc as any).auth.clients.register.useMutation({
-    onSuccess: (data: any) => {
+    onSuccess: async (data: any) => {
       toast.success(`تم إنشاء حساب ومساحة العمل الخاصة للعميل (${data.client.name}) بنجاح!`);
-      utils.invalidate();
+      await utils.invalidate();
       navigate("/");
     },
     onError: (err: any) => {
       toast.error(err.message || "حدث خطأ أثناء تسجيل العميل");
     },
   });
+
+  if (!authLoading && isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();

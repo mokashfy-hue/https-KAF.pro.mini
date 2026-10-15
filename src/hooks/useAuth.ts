@@ -8,16 +8,8 @@ type UseAuthOptions = {
   redirectPath?: string;
 };
 
-const DEFAULT_USER = {
-  id: 1,
-  name: "مكاشفي",
-  email: "admin@kaf.pro",
-  role: "admin" as const,
-  avatar: "",
-};
-
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectPath = LOGIN_PATH } = options ?? {};
+  const { redirectPath = LOGIN_PATH, redirectOnUnauthenticated = false } = options ?? {};
   const navigate = useNavigate();
   const utils = trpc.useUtils();
 
@@ -40,17 +32,17 @@ export function useAuth(options?: UseAuthOptions) {
 
   const logout = useCallback(() => logoutMutation.mutate(), [logoutMutation]);
 
-  const activeUser = user ?? DEFAULT_USER;
+  const isAuthenticated = Boolean(user);
 
   return useMemo(
     () => ({
-      user: activeUser,
-      isAuthenticated: true,
-      isLoading: false,
+      user: user ?? null,
+      isAuthenticated,
+      isLoading,
       error,
       logout,
       refresh: refetch,
     }),
-    [activeUser, error, logout, refetch],
+    [user, isAuthenticated, isLoading, error, logout, refetch],
   );
 }

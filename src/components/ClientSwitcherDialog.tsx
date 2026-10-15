@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/hooks/useAuth";
 import { trpc } from "@/providers/trpc";
 import { useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
+
 import {
   Dialog,
   DialogContent,
@@ -32,6 +34,7 @@ interface ClientSwitcherDialogProps {
 
 export function ClientSwitcherDialog({ open, onOpenChange }: ClientSwitcherDialogProps) {
   const { isRtl, t } = useLanguage();
+  const { logout } = useAuth();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
 
@@ -207,7 +210,7 @@ export function ClientSwitcherDialog({ open, onOpenChange }: ClientSwitcherDialo
                 variant="outline"
                 onClick={() => {
                   onOpenChange(false);
-                  navigate("/login");
+                  logout();
                 }}
                 className="gap-1.5 text-xs text-rose-600"
               >

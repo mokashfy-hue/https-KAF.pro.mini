@@ -528,13 +528,48 @@ export function saveClientsRegistry(clients: ClientAccount[]) {
   }
 }
 
+export const AUTH_SESSION_KEY = "kaf_pro_session_logged_in";
+
+export function isSessionAuthenticated(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const isAuth = localStorage.getItem(AUTH_SESSION_KEY);
+    const activeId = localStorage.getItem(ACTIVE_CLIENT_KEY);
+    if (isAuth !== "true" || !activeId) return false;
+    const clients = getClientsRegistry();
+    return clients.some((c) => c.id === activeId);
+  } catch {
+    return false;
+  }
+}
+
+export function setSessionAuthenticated(clientId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(AUTH_SESSION_KEY, "true");
+    localStorage.setItem(ACTIVE_CLIENT_KEY, clientId);
+  } catch (err) {
+    console.error("Failed to set session", err);
+  }
+}
+
+export function clearSessionAuthentication() {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(AUTH_SESSION_KEY);
+    localStorage.removeItem(ACTIVE_CLIENT_KEY);
+  } catch (err) {
+    console.error("Failed to clear session", err);
+  }
+}
+
 export function getActiveClientId(): string {
-  if (typeof window === "undefined") return "client_main";
+  if (typeof window === "undefined") return "";
   try {
     const active = localStorage.getItem(ACTIVE_CLIENT_KEY);
-    return active || "client_main";
+    return active || "";
   } catch {
-    return "client_main";
+    return "";
   }
 }
 
@@ -548,10 +583,11 @@ export function setActiveClientId(id: string) {
 }
 
 export function getClientStorageKey(clientId: string): string {
-  if (clientId === "client_main") {
+  const safeId = clientId || "client_main";
+  if (safeId === "client_main") {
     return "kaf_pro_accounting_db";
   }
-  return `kaf_pro_client_${clientId}_db`;
+  return `kaf_pro_client_${safeId}_db`;
 }
 
 export function ensureAccountsUpToDate(accounts: any[] | undefined): LocalAccount[] {
@@ -753,9 +789,16 @@ export function executeLocalProcedure(path: string, input: any): any {
   }
 
   if (path === "auth.clients.getActive") {
+    if (!isSessionAuthenticated()) {
+      return {
+        activeClient: null,
+        clientId: null,
+        isPrivate: false,
+      };
+    }
     const activeId = getActiveClientId();
     const clients = getClientsRegistry();
-    const activeClient = clients.find((c) => c.id === activeId) || clients[0] || DEFAULT_CLIENTS[0];
+    const activeClient = clients.find((c) => c.id === activeId) || null;
     return {
       activeClient,
       clientId: activeId,
@@ -778,7 +821,7 @@ export function executeLocalProcedure(path: string, input: any): any {
     if (found.pin && pin && found.pin !== pin) {
       throw new Error("رمز المرور (PIN) غير صحيح لهذا العميل");
     }
-    setActiveClientId(found.id);
+    setSessionAuthenticated(found.id);
     return { success: true, client: found };
   }
 
@@ -838,7 +881,7 @@ export function executeLocalProcedure(path: string, input: any): any {
       localStorage.setItem(storageKey, JSON.stringify(newDb));
     }
 
-    setActiveClientId(newId);
+    setSessionAuthenticated(newId);
     return { success: true, client: newClient };
   }
 
@@ -850,7 +893,7 @@ export function executeLocalProcedure(path: string, input: any): any {
     if (target.pin && pin && target.pin !== pin) {
       throw new Error("رمز المرور غير صحيح");
     }
-    setActiveClientId(clientId);
+    setSessionAuthenticated(clientId);
 
     // Immediately ensure the switched target client has the complete 99 accounts in their db
     if (typeof window !== "undefined") {
@@ -868,11 +911,19 @@ export function executeLocalProcedure(path: string, input: any): any {
     return { success: true, client: target };
   }
 
+  // Guard all data procedures: require active session
+  if (!path.startsWith("auth.") && !isSessionAuthenticated()) {
+    throw new Error("غير مصرح: يجب تسجيل الدخول أو إنشاء حساب جديد أولاً للوصول للنظام");
+  }
+
   const db = getDb();
   const balances = computeBalances(db);
 
   // ── Auth ──
   if (path === "auth.me") {
+    if (!isSessionAuthenticated()) {
+      return null;
+    }
     const activeId = getActiveClientId();
     const clients = getClientsRegistry();
     const client = clients.find((c) => c.id === activeId);
@@ -888,9 +939,10 @@ export function executeLocalProcedure(path: string, input: any): any {
         clientId: client.id,
       };
     }
-    return db.user;
+    return null;
   }
   if (path === "auth.logout") {
+    clearSessionAuthentication();
     return { success: true };
   }
 
