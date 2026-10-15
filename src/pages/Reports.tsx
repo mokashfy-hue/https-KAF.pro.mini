@@ -16,11 +16,18 @@ import {
   Calendar,
   Activity,
   Receipt,
+  Share2,
+  FileDown,
 } from "lucide-react";
+import {
+  ExportDocumentModal,
+  type ExportableFinancialDoc,
+} from "@/components/ExportDocumentModal";
 
 export default function ReportsPage() {
   const { isRtl, t } = useLanguage();
   const [reportType, setReportType] = useState<"trialBalance" | "balanceSheet" | "incomeStatement" | "transactions" | "vouchers">("trialBalance");
+  const [exportDoc, setExportDoc] = useState<ExportableFinancialDoc | null>(null);
 
   const { data: trialBalance } = (trpc as any).reports.trialBalance.useQuery();
   const { data: balanceSheet } = (trpc as any).reports.balanceSheet.useQuery();
@@ -31,6 +38,81 @@ export default function ReportsPage() {
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleOpenReportExport = () => {
+    let title = "التقرير المالي الرسمي المعتمد";
+    let rows: Array<Array<string | number>> = [];
+    let headers: string[] = [];
+    let amount = 0;
+
+    if (reportType === "trialBalance" && trialBalance) {
+      title = "تقرير ميزان المراجعة المالي العام (Trial Balance)";
+      headers = ["كود الحساب", "اسم الحساب", "مدين", "دائن"];
+      rows = (trialBalance.accounts || []).map((a: any) => [
+        a.code || "-",
+        a.name,
+        Number(a.debit) > 0 ? formatMoney(a.debit) : "-",
+        Number(a.credit) > 0 ? formatMoney(a.credit) : "-",
+      ]);
+      amount = trialBalance.totalDebit || 0;
+    } else if (reportType === "balanceSheet" && balanceSheet) {
+      title = "تقرير الميزانية العمومية والمركز المالي (Balance Sheet)";
+      headers = ["البند المالي", "التصنيف", "القيمة"];
+      rows = [
+        ...((balanceSheet.assets || []).map((a: any) => [a.name, "أصول", formatMoney(a.balance)])),
+        ...((balanceSheet.liabilities || []).map((l: any) => [l.name, "التزامات", formatMoney(l.balance)])),
+        ...((balanceSheet.equity || []).map((e: any) => [e.name, "حقوق ملكية", formatMoney(e.balance)])),
+      ];
+      amount = balanceSheet.totalAssets || 0;
+    } else if (reportType === "incomeStatement" && incomeStatement) {
+      title = "تقرير قائمة الدخل والأرباح والخسائر (Income Statement)";
+      headers = ["البند المالي", "النوع", "المبلغ"];
+      rows = [
+        ...((incomeStatement.revenues || []).map((r: any) => [r.name, "إيرادات", formatMoney(r.amount)])),
+        ...((incomeStatement.expenses || []).map((e: any) => [e.name, "مصروفات", formatMoney(e.amount)])),
+      ];
+      amount = incomeStatement.netIncome || 0;
+    } else if (reportType === "transactions" && transactions) {
+      title = "تقرير الحركات المالية والعمليات اليومية";
+      headers = ["الرقم", "التاريخ", "النوع", "البيان", "المبلغ"];
+      rows = (transactions || []).map((t: any) => [
+        `#${t.id}`,
+        String(t.date),
+        t.kind === "income" ? "إيراد" : "مصروف",
+        t.description || t.category,
+        formatMoney(t.amount),
+      ]);
+      amount = (transactions || []).reduce((s: number, t: any) => s + (parseFloat(t.amount) || 0), 0);
+    } else if (reportType === "vouchers" && vouchers) {
+      title = "تقرير سندات القبض وسندات الصرف المالية";
+      headers = ["رقم السند", "النوع", "التاريخ", "المستفيد / الدافع", "المبلغ"];
+      rows = (vouchers || []).map((v: any) => [
+        v.number,
+        v.type === "receipt" ? "قبض" : "صرف",
+        v.date,
+        v.contactName || "طرف عام",
+        formatMoney(v.amount),
+      ]);
+      amount = (vouchers || []).reduce((s: number, v: any) => s + (parseFloat(v.amount) || 0), 0);
+    }
+
+    setExportDoc({
+      type: "report",
+      id: `REP-${Date.now()}`,
+      subType: reportType,
+      title,
+      number: `REP-${new Date().toISOString().slice(0, 10)}`,
+      date: new Date().toISOString().slice(0, 10),
+      amount,
+      partyName: "الإدارة المالية والشركاء",
+      description: `تم إعداد واستخراج هذا التقرير المالي المعتمد آلياً من سجلات ودفاتر النظام المحاسبي.`,
+      receivedBy: "مكاشفي",
+      reportData: {
+        headers,
+        rows,
+      },
+    });
   };
 
   return (
@@ -48,10 +130,17 @@ export default function ReportsPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              onClick={handleOpenReportExport}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 h-11 font-bold shadow-sm"
+            >
+              <Share2 className="h-4 w-4" />
+              {t("تصدير ومشاركة التقرير كـ PDF وواتساب 📄", "Export & Share Report PDF")}
+            </Button>
             <Button onClick={handlePrint} variant="outline" className="gap-2 h-11 border-dashed">
               <Printer className="h-4 w-4 text-emerald-600" />
-              {t("طباعة التقرير 🖨️", "Print Report 🖨️")}
+              {t("طباعة مباشرة 🖨️", "Print Direct 🖨️")}
             </Button>
           </div>
         </div>
@@ -472,6 +561,12 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       </div>
+
+      <ExportDocumentModal
+        open={Boolean(exportDoc)}
+        onOpenChange={(open) => !open && setExportDoc(null)}
+        document={exportDoc}
+      />
     </Layout>
   );
 }
