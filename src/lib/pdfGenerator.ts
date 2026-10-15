@@ -1,7 +1,8 @@
 /**
- * PDF Generator for KAF PRO ERP
- * Generates 100% compliant, standard PDF 1.4 binary documents directly in the browser
- * with zero external dependencies. Preserves exact colors, borders, and layouts.
+ * PDF & High-Res Document Generator for KAF PRO ERP
+ * Generates 100% standard, compliant PDF 1.4 binary documents and High-Res PNG images
+ * directly in the browser with zero external dependencies.
+ * Preserves exact colors, borders, badges, stamps, and layout.
  */
 
 export function buildPdfBinary(
@@ -134,27 +135,50 @@ export function buildPdfBinary(
 }
 
 /**
- * Render a DOM element to an HTML5 Canvas at high resolution
+ * Render a DOM element to an HTML5 Canvas at high resolution (2x DPI)
+ * Uses strict XML serialization without external link tags to avoid parser crashes
  */
 export async function renderElementToCanvas(element: HTMLElement): Promise<HTMLCanvasElement> {
   const width = Math.max(element.scrollWidth, element.offsetWidth, 750);
   const height = Math.max(element.scrollHeight, element.offsetHeight, 950);
 
-  // Collect all styles from the current document
-  const styleSheets = Array.from(document.querySelectorAll("style, link[rel='stylesheet']"))
-    .map((node) => node.outerHTML)
-    .join("\n");
+  // Clone the element so we can safely sanitize it
+  const clone = element.cloneNode(true) as HTMLElement;
 
-  const clonedHtml = element.outerHTML;
+  // Remove buttons, inputs, interactive and print-hidden elements
+  clone.querySelectorAll("button, input, select, textarea, .print\\:hidden").forEach((el) => el.remove());
+
+  // Serialize to valid XML
+  const serializer = new XMLSerializer();
+  let xhtml = serializer.serializeToString(clone);
+
+  // Replace HTML named entities that cause XML syntax errors
+  xhtml = xhtml
+    .replace(/&nbsp;/g, "&#160;")
+    .replace(/&ndash;/g, "&#8211;")
+    .replace(/&mdash;/g, "&#8212;")
+    .replace(/&copy;/g, "&#169;")
+    .replace(/&reg;/g, "&#174;")
+    .replace(/&quot;/g, "&#34;");
+
+  // Collect text content of <style> tags only (exclude <link> tags to prevent unclosed XML tag errors)
+  const styleContent = Array.from(document.querySelectorAll("style"))
+    .map((s) => s.textContent || "")
+    .join("\n");
 
   const svgXml = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
       <defs>
-        ${styleSheets}
+        <style type="text/css">
+          <![CDATA[
+            * { box-sizing: border-box; }
+            ${styleContent}
+          ]]>
+        </style>
       </defs>
       <foreignObject width="100%" height="100%">
-        <div xmlns="http://www.w3.org/1999/xhtml" style="background:#ffffff; color:#0f172a; font-family:'Segoe UI', Tahoma, Arial, sans-serif; direction:rtl; margin:0; padding:10px;">
-          ${clonedHtml}
+        <div xmlns="http://www.w3.org/1999/xhtml" style="background:#ffffff; color:#0f172a; font-family:'Segoe UI', Tahoma, Arial, sans-serif; direction:rtl; margin:0; padding:12px;">
+          ${xhtml}
         </div>
       </foreignObject>
     </svg>
@@ -166,16 +190,16 @@ export async function renderElementToCanvas(element: HTMLElement): Promise<HTMLC
   const img = new Image();
   img.crossOrigin = "anonymous";
 
-  await new Promise((resolve, reject) => {
-    img.onload = resolve;
-    img.onerror = () => {
-      // If SVG rendering fails, resolve anyway and fallback
-      resolve(null);
+  await new Promise((resolve) => {
+    img.onload = () => resolve(true);
+    img.onerror = (e) => {
+      console.warn("SVG foreignObject rendering error, using canvas fallback", e);
+      resolve(false);
     };
     img.src = url;
   });
 
-  const scale = 2; // High-resolution 2x for sharp print quality
+  const scale = 2; // Sharp 2x DPI for official print/PDF
   const canvas = document.createElement("canvas");
   canvas.width = width * scale;
   canvas.height = height * scale;
@@ -183,10 +207,52 @@ export async function renderElementToCanvas(element: HTMLElement): Promise<HTMLC
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.scale(scale, scale);
-  ctx.drawImage(img, 0, 0, width, height);
+
+  if (img.width > 0 && img.height > 0) {
+    ctx.drawImage(img, 0, 0, width, height);
+  }
 
   URL.revokeObjectURL(url);
   return canvas;
+}
+
+/**
+ * Copy an element directly as a high-resolution PNG image to the system clipboard
+ * When pasted in WhatsApp Web (Ctrl + V), WhatsApp immediately shows the full colored slip
+ */
+export async function copyElementAsImageToClipboard(element: HTMLElement): Promise<boolean> {
+  try {
+    const canvas = await renderElementToCanvas(element);
+    const blob: Blob | null = await new Promise((resolve) => {
+      canvas.toBlob((b) => resolve(b), "image/png", 1.0);
+    });
+
+    if (!blob) return false;
+
+    if (navigator.clipboard && typeof (window as any).ClipboardItem !== "undefined") {
+      const item = new (window as any).ClipboardItem({ "image/png": blob });
+      await navigator.clipboard.write([item]);
+      return true;
+    }
+    return false;
+  } catch (err) {
+    console.error("Failed to copy image to clipboard", err);
+    return false;
+  }
+}
+
+/**
+ * Download an element directly as a high-resolution PNG image
+ */
+export async function downloadElementAsImage(element: HTMLElement, fileName: string): Promise<void> {
+  const canvas = await renderElementToCanvas(element);
+  const blob: Blob | null = await new Promise((resolve) => {
+    canvas.toBlob((b) => resolve(b), "image/png", 1.0);
+  });
+  if (blob) {
+    const safeName = fileName.endsWith(".png") ? fileName : `${fileName}.png`;
+    downloadFile(blob, safeName);
+  }
 }
 
 /**

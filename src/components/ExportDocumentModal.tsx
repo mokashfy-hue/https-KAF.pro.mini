@@ -26,10 +26,17 @@ import {
   User,
   Sparkles,
   Download,
-  AlertCircle,
+  Image as ImageIcon,
+  CheckCircle2,
+  Paperclip,
 } from "lucide-react";
 import { toast } from "sonner";
-import { generatePdfFromElement, downloadFile } from "@/lib/pdfGenerator";
+import {
+  generatePdfFromElement,
+  downloadFile,
+  copyElementAsImageToClipboard,
+  downloadElementAsImage,
+} from "@/lib/pdfGenerator";
 
 export type ExportableDocumentType = "voucher" | "transaction" | "journal_entry" | "report";
 
@@ -91,7 +98,9 @@ export function ExportDocumentModal({
   const [activeTab, setActiveTab] = useState<"preview" | "whatsapp" | "share">("preview");
   const [copied, setCopied] = useState(false);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [downloadSuccessNotice, setDownloadSuccessNotice] = useState(false);
+  const [isCopyingImage, setIsCopyingImage] = useState(false);
+  const [copiedImageNotice, setCopiedImageNotice] = useState(false);
+  const [pdfDownloadedNotice, setPdfDownloadedNotice] = useState(false);
 
   // WhatsApp form state
   const [countryCode, setCountryCode] = useState("966");
@@ -154,7 +163,7 @@ export function ExportDocumentModal({
 
   const effectivePhone = phoneNumber || doc.partyPhone || matchedContact?.phone || "";
 
-  // Prepare formatted WhatsApp text summary
+  // Prepare clean WhatsApp text summary (No misleading text about attachments)
   const generateWhatsAppMessage = () => {
     const lines = [
       `🧾 *${docBadgeText} معتمد*`,
@@ -186,8 +195,7 @@ export function ExportDocumentModal({
     }
 
     lines.push(`----------------------------------------`);
-    lines.push(`📎 مرفق أدناه ملف السند بصيغة (PDF) المعتمدة`);
-    lines.push(`✅ تم استخراج هذا السند إلكترونياً وباعتماد رسمي`);
+    lines.push(`✅ سند مالي رسمي ومسجل إلكترونياً بالنظام المحاسبي`);
     lines.push(`✨ *المصمم والمالك للنظام: شركة المكاشفى*`);
 
     return lines.join("\n");
@@ -214,7 +222,7 @@ export function ExportDocumentModal({
     return `${safeType}_${safeNum}.pdf`;
   };
 
-  // Direct Binary PDF Download
+  // 1. Direct Binary PDF Download
   const handleDownloadPdf = async () => {
     const elem = printDocRef.current || document.getElementById("printable-financial-doc");
     if (!elem) return;
@@ -225,7 +233,7 @@ export function ExportDocumentModal({
       const { blob } = await generatePdfFromElement(elem, getSafeFileName());
       downloadFile(blob, getSafeFileName());
       toast.success("تم تحميل ملف PDF للسند بنجاح!");
-      setDownloadSuccessNotice(true);
+      setPdfDownloadedNotice(true);
     } catch (err: any) {
       console.error("PDF generation error", err);
       toast.error("حدث خطأ أثناء إنشاء PDF، جاري التحويل للطباعة المباشرة...");
@@ -235,7 +243,62 @@ export function ExportDocumentModal({
     }
   };
 
-  // Send PDF via WhatsApp / Web Share
+  // 2. Direct PNG Image Download
+  const handleDownloadImage = async () => {
+    const elem = printDocRef.current || document.getElementById("printable-financial-doc");
+    if (!elem) return;
+    try {
+      toast.info("جاري تجهيز صورة السند المعتمد...");
+      const safeName = getSafeFileName().replace(/\.pdf$/, ".png");
+      await downloadElementAsImage(elem, safeName);
+      toast.success("تم تحميل صورة السند المعتمدة (PNG) بنجاح!");
+    } catch (err) {
+      console.error("Download image error", err);
+      toast.error("تعذر تحميل الصورة");
+    }
+  };
+
+  // 3. FAST WHATSAPP AS IMAGE (The 1-Click WhatsApp Paste Experience)
+  // Copies the entire styled slip to clipboard and opens WhatsApp Web
+  const handleSendWhatsAppAsImage = async () => {
+    const elem = printDocRef.current || document.getElementById("printable-financial-doc");
+    if (!elem) return;
+
+    try {
+      setIsCopyingImage(true);
+      toast.info("جاري نسخ صورة السند المعتمدة بالكامل...");
+      const success = await copyElementAsImageToClipboard(elem);
+      setIsCopyingImage(false);
+
+      // Also auto-download PDF in background so user has both
+      try {
+        const { blob } = await generatePdfFromElement(elem, getSafeFileName());
+        downloadFile(blob, getSafeFileName());
+      } catch (e) {
+        console.warn("PDF auto-download fallback", e);
+      }
+
+      const finalPhone = cleanPhoneForWhatsApp(effectivePhone, countryCode);
+      let waUrl = "";
+      if (finalPhone) {
+        waUrl = `https://wa.me/${finalPhone}`;
+      } else {
+        waUrl = `https://wa.me/`;
+      }
+
+      window.open(waUrl, "_blank");
+      setCopiedImageNotice(true);
+      if (success) {
+        toast.success("تم نسخ صورة السند المعتمد! اضغط (Ctrl + V) أو لصق في محادثة الواتساب المفتوحة لإرسالها فوراً 🟢");
+      }
+    } catch (err) {
+      console.error("Copy image error", err);
+      setIsCopyingImage(false);
+      toast.error("حدث خطأ أثناء نسخ الصورة");
+    }
+  };
+
+  // 4. Send PDF via WhatsApp / Web Share
   const handleSendWhatsAppWithPdf = async () => {
     const elem = printDocRef.current || document.getElementById("printable-financial-doc");
     const text = generateWhatsAppMessage();
@@ -272,16 +335,16 @@ export function ExportDocumentModal({
         if (err.name !== "AbortError") {
           console.warn("Share failed, falling back to WhatsApp link", err);
         } else {
-          return; // user cancelled share modal
+          return;
         }
       }
     }
 
-    // Fallback for Desktop / non-file share:
+    // Fallback for Desktop:
     // 1. Download the real PDF file
     if (pdfBlob) {
       downloadFile(pdfBlob, fileName);
-      setDownloadSuccessNotice(true);
+      setPdfDownloadedNotice(true);
       toast.success("تم تنزيل ملف PDF (السند الرسمي) لجهازك!");
     }
 
@@ -304,7 +367,7 @@ export function ExportDocumentModal({
     setTimeout(() => setCopied(false), 2500);
   };
 
-  // Native Browser Print: Triggered directly from current window so all styles are active
+  // Native Browser Print
   const handlePrint = () => {
     window.print();
   };
@@ -348,7 +411,7 @@ export function ExportDocumentModal({
                 )}
               >
                 <MessageSquare className="h-3.5 w-3.5" />
-                <span>{t("إرسال ملف PDF عبر واتساب", "WhatsApp PDF")}</span>
+                <span>{t("إرسال عبر واتساب 💬", "Send WhatsApp 💬")}</span>
               </button>
               <button
                 type="button"
@@ -367,37 +430,88 @@ export function ExportDocumentModal({
           </div>
         </DialogHeader>
 
-        {/* Notice after generating and downloading PDF */}
-        {downloadSuccessNotice && (
-          <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-950 text-xs flex items-center justify-between gap-2 print:hidden animate-in fade-in duration-300">
-            <div className="flex items-center gap-2">
-              <Check className="h-4 w-4 text-emerald-600 shrink-0" />
-              <span>
-                <strong>تم تنزيل ملف السند (PDF) بنجاح:</strong> يمكنك الآن إرفاقه 📎 أو سحبه إلى محادثة الواتساب المفتوحة للعميل.
-              </span>
+        {/* ── Instruction Notice: When Image is copied for WhatsApp ── */}
+        {copiedImageNotice && (
+          <div className="p-4 rounded-xl bg-emerald-50 border-2 border-emerald-500 text-emerald-950 space-y-2 print:hidden animate-in fade-in duration-300 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-sm text-emerald-900">
+                <Sparkles className="h-5 w-5 text-emerald-600 shrink-0" />
+                <span>تم نسخ السند بالصورة الكاملة الملونة إلى الحافظة بنجاح! 🟢</span>
+              </div>
+              <button
+                onClick={() => setCopiedImageNotice(false)}
+                className="text-xs text-emerald-800 hover:underline font-bold"
+              >
+                ✕ إغلاق
+              </button>
             </div>
-            <button
-              onClick={() => setDownloadSuccessNotice(false)}
-              className="text-xs text-emerald-700 hover:underline font-bold"
-            >
-              إغلاق
-            </button>
+            <p className="text-xs text-emerald-900 leading-relaxed font-medium">
+              تم فتح محادثة الواتساب. الآن في شاشة الواتساب:
+              <br />
+              👉 <strong>اضغط على الكيبورد (Ctrl + V)</strong> أو انقر بالزر الأيمن في مربع الرسالة واختر <strong>(لصق / Paste)</strong> ثم اضغط <strong>(Enter / إرسال)</strong>.
+              <br />
+              ستظهر صورة السند كاملة بألوانها وإطاراتها وشعارها وختمها كما هي في النظام تماماً (كما بالصورة المعاينة)!
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Button
+                size="sm"
+                onClick={handleSendWhatsAppAsImage}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs h-8 gap-1.5 font-bold"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                إعادة نسخ الصورة وفتح الواتساب
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleDownloadPdf}
+                className="text-xs h-8 gap-1 text-emerald-800 border-emerald-300"
+              >
+                <Download className="h-3.5 w-3.5 text-emerald-600" />
+                تحميل ملف PDF أيضاً
+              </Button>
+            </div>
           </div>
         )}
 
-        {/* ── Tab 2: WhatsApp PDF Sharing Form ── */}
+        {/* ── Instruction Notice: When PDF is downloaded for WhatsApp ── */}
+        {pdfDownloadedNotice && (
+          <div className="p-4 rounded-xl bg-blue-50 border-2 border-blue-400 text-blue-950 space-y-2 print:hidden animate-in fade-in duration-300 shadow-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-sm text-blue-900">
+                <FileDown className="h-5 w-5 text-blue-600 shrink-0" />
+                <span>تم تنزيل ملف السند الرسمي بصيغة PDF لجهازك! 📄</span>
+              </div>
+              <button
+                onClick={() => setPdfDownloadedNotice(false)}
+                className="text-xs text-blue-800 hover:underline font-bold"
+              >
+                ✕ إغلاق
+              </button>
+            </div>
+            <p className="text-xs text-blue-900 leading-relaxed font-medium">
+              تم فتح محادثة الواتساب، ولإرسال ملف الـ PDF كملف مستند رسمي للعميل:
+              <br />
+              👉 اضغط على <strong>علامة المشبك 📎</strong> أسفل محادثة الواتساب واختر <strong>"مستند Document"</strong> وحدد ملف السند المنزّل.
+              <br />
+              (أو اسحب ملف الـ PDF من شريط التنزيلات بأسفل المتصفح وأفلته مباشرة داخل محادثة الواتساب).
+            </p>
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              <Button
+                size="sm"
+                onClick={handleDownloadPdf}
+                className="bg-blue-700 hover:bg-blue-800 text-white text-xs h-8 gap-1.5 font-bold"
+              >
+                <Download className="h-3.5 w-3.5" />
+                إعادة تنزيل ملف PDF
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Tab 2: WhatsApp PDF & Image Sharing Form ── */}
         {activeTab === "whatsapp" && (
           <div className="space-y-4 py-2 print:hidden">
-            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 text-xs flex items-start gap-2.5">
-              <Sparkles className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">إرسال ملف السند (PDF) ورسالته المعتمدة للعميل عبر الواتساب:</p>
-                <p className="text-emerald-800 text-[11px] mt-0.5">
-                  يتم تجهيز ملف السند بصيغة PDF الرسمية بكامل الألوان والشعار والجداول لإرسالها مباشرة إلى العميل.
-                </p>
-              </div>
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <Label className="text-xs font-bold">{t("رمز الدولة", "Country Code")}</Label>
@@ -442,8 +556,8 @@ export function ExportDocumentModal({
                 <Label className="text-[11px] text-muted-foreground font-semibold">
                   {t("اختر جهة اتصال لملء الرقم فوراً:", "Or pick a contact:")}
                 </Label>
-                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto p-1 bg-muted/40 rounded-lg border">
-                  {contacts.slice(0, 10).map((c) => (
+                <div className="flex flex-wrap gap-1.5 max-h-20 overflow-y-auto p-1 bg-muted/40 rounded-lg border">
+                  {contacts.slice(0, 8).map((c) => (
                     <button
                       key={c.id}
                       type="button"
@@ -464,51 +578,58 @@ export function ExportDocumentModal({
               </div>
             )}
 
-            <div>
-              <Label className="text-xs font-bold">{t("ملاحظة إضافية (اختياري)", "Optional Custom Note")}</Label>
-              <Input
-                value={customNotes}
-                onChange={(e) => setCustomNotes(e.target.value)}
-                placeholder="مثال: نرجو التكرم بالاطلاع واعتماد الاستلام"
-                className="mt-1 h-9 text-xs"
-              />
+            {/* Two Distinct Sharing Methods */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+              {/* Method 1: Send Slip as Full Colored Image */}
+              <div className="p-4 rounded-xl border-2 border-emerald-400 bg-emerald-50/60 space-y-2.5">
+                <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
+                  <ImageIcon className="h-4 w-4 text-emerald-600 shrink-0" />
+                  <span>طريقة 1: إرسال السند كصورة معتمدة (Ctrl+V)</span>
+                </div>
+                <p className="text-[11px] text-emerald-800 leading-relaxed">
+                  يقوم بنسخ صورة السند بكامل ألوانه وإطاراته والختم الرسمي إلى الحافظة وفتح الواتساب، وفور فتح المحادثة تضغط فقط <strong>Ctrl+V</strong> فيظهر السند بشكله الكامل!
+                </p>
+                <Button
+                  type="button"
+                  onClick={handleSendWhatsAppAsImage}
+                  disabled={isCopyingImage}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-10 gap-2 text-xs shadow-sm"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span>{isCopyingImage ? "جاري النسخ..." : "إرسال كصورة للواتساب (لصق سريع) 🟢"}</span>
+                </Button>
+              </div>
+
+              {/* Method 2: Send PDF File */}
+              <div className="p-4 rounded-xl border-2 border-blue-400 bg-blue-50/60 space-y-2.5">
+                <div className="flex items-center gap-2 text-blue-900 font-bold text-sm">
+                  <Paperclip className="h-4 w-4 text-blue-600 shrink-0" />
+                  <span>طريقة 2: إرسال السند كملف مستند PDF رسمي</span>
+                </div>
+                <p className="text-[11px] text-blue-800 leading-relaxed">
+                  يقوم بتنزيل ملف الـ PDF المعتمد إلى جهازك ويفتح محادثة العميل، ثم تضغط على علامة المشبك <strong>📎</strong> في واتساب لاختيار ملف السند وإرساله.
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleSendWhatsAppWithPdf}
+                  disabled={isGeneratingPdf}
+                  className="w-full border-blue-500 text-blue-900 hover:bg-blue-100 font-bold h-10 gap-2 text-xs"
+                >
+                  <FileDown className="h-3.5 w-3.5 text-blue-600" />
+                  <span>{isGeneratingPdf ? "جاري التجهيز..." : "إرسال ملف PDF عبر الواتساب 📎"}</span>
+                </Button>
+              </div>
             </div>
 
             {/* Live Message Preview */}
-            <div className="space-y-1">
+            <div className="space-y-1 pt-2">
               <Label className="text-xs font-bold text-muted-foreground">
-                {t("معاينة الرسالة المرفقة مع ملف PDF:", "Message Preview:")}
+                {t("معاينة نص الإشعار المرفق:", "Message Summary Text:")}
               </Label>
-              <pre className="p-3 bg-muted/70 rounded-xl text-[11px] font-sans leading-relaxed text-foreground whitespace-pre-wrap border max-h-36 overflow-y-auto">
+              <pre className="p-3 bg-muted/70 rounded-xl text-[11px] font-sans leading-relaxed text-foreground whitespace-pre-wrap border max-h-32 overflow-y-auto">
                 {generateWhatsAppMessage()}
               </pre>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2 pt-1">
-              <Button
-                type="button"
-                onClick={handleSendWhatsAppWithPdf}
-                disabled={isGeneratingPdf}
-                className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11 gap-2 shadow-sm"
-              >
-                <Send className="h-4 w-4" />
-                <span>
-                  {isGeneratingPdf
-                    ? t("جاري تجهيز ملف PDF...", "Preparing PDF...")
-                    : t("إرسال ملف PDF عبر الواتساب للعميل 🟢", "Send PDF via WhatsApp Now 🟢")}
-                </span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleDownloadPdf}
-                disabled={isGeneratingPdf}
-                className="gap-1.5 h-11 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50"
-              >
-                <Download className="h-4 w-4 text-emerald-600" />
-                <span>{t("تحميل ملف PDF 📥", "Download PDF 📥")}</span>
-              </Button>
             </div>
           </div>
         )}
@@ -519,37 +640,36 @@ export function ExportDocumentModal({
             <div className="p-4 rounded-xl bg-muted/50 border space-y-3">
               <div className="flex items-center gap-2">
                 <Share2 className="h-5 w-5 text-emerald-600" />
-                <h3 className="font-bold text-sm">مشاركة ملف السند (PDF) عبر التطبيقات</h3>
+                <h3 className="font-bold text-sm">مشاركة وتنزيل السند المالي الرسمي</h3>
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                يمكنك مشاركة ملف السند مباشرة كملف PDF رسمي أو إرساله عبر تيليجرام، الإيميل، وتطبيقات التواصل الأخرى.
+                يمكنك تحميل ملف السند بصيغة PDF أو كصورة عالية الدقة PNG أو نسخ ملخص السند للمشاركة عبر التطبيقات.
               </p>
 
               <div className="flex flex-wrap gap-2 pt-2">
                 <Button
-                  onClick={handleSendWhatsAppWithPdf}
+                  onClick={handleDownloadPdf}
                   disabled={isGeneratingPdf}
-                  className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 h-10"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 h-10 text-xs"
                 >
-                  <Share2 className="h-4 w-4" />
-                  <span>{t("مشاركة ملف PDF عبر التطبيقات 🚀", "Share PDF File")}</span>
+                  <Download className="h-4 w-4" />
+                  <span>{t("تحميل ملف PDF 📄", "Download PDF File")}</span>
                 </Button>
                 <Button
                   variant="outline"
-                  onClick={handleDownloadPdf}
-                  disabled={isGeneratingPdf}
-                  className="gap-2 font-semibold h-10"
+                  onClick={handleDownloadImage}
+                  className="gap-2 font-bold h-10 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50"
                 >
-                  <Download className="h-4 w-4 text-emerald-600" />
-                  <span>{t("تحميل ملف PDF", "Download PDF")}</span>
+                  <ImageIcon className="h-4 w-4 text-emerald-600" />
+                  <span>{t("تحميل صورة السند (PNG) 🖼️", "Download PNG Image")}</span>
                 </Button>
                 <Button
                   variant="outline"
                   onClick={handleCopyMessage}
-                  className="gap-2 font-semibold h-10"
+                  className="gap-2 font-semibold h-10 text-xs"
                 >
                   {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
-                  <span>{copied ? t("تم النسخ!", "Copied!") : t("نسخ الإشعار", "Copy Text")}</span>
+                  <span>{copied ? t("تم النسخ!", "Copied!") : t("نسخ نص الإشعار", "Copy Text")}</span>
                 </Button>
               </div>
             </div>
@@ -565,20 +685,24 @@ export function ExportDocumentModal({
 
         {/* ── Tab 1: Printable Slip Preview (Always rendered for Print) ── */}
         <div className={cn("space-y-4", activeTab !== "preview" && "print:block hidden")}>
-          {/* Top toolbar */}
+          {/* Top Primary Actions Toolbar */}
           <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-3 print:hidden">
             <span className="text-xs text-muted-foreground font-semibold">
-              جاهز للطباعة والحفظ كملف PDF بكامل الألوان والجداول:
+              خيارات التصدير والمشاركة السريعة للسند:
             </span>
             <div className="flex flex-wrap gap-2">
+              {/* Primary 1-Click WhatsApp Button */}
               <Button
                 type="button"
-                onClick={handlePrint}
+                onClick={handleSendWhatsAppAsImage}
+                disabled={isCopyingImage}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm font-bold h-9 text-xs"
               >
-                <Printer className="h-4 w-4" />
-                <span>{t("طباعة / حفظ كملف PDF 📄", "Print / Save as PDF 📄")}</span>
+                <Send className="h-3.5 w-3.5" />
+                <span>{isCopyingImage ? "جاري النسخ..." : t("إرسال كصورة للواتساب 🟢", "Send Image to WhatsApp 🟢")}</span>
               </Button>
+
+              {/* PDF Download Button */}
               <Button
                 type="button"
                 variant="outline"
@@ -589,6 +713,30 @@ export function ExportDocumentModal({
                 <Download className="h-3.5 w-3.5 text-emerald-600" />
                 <span>{isGeneratingPdf ? t("جاري التحميل...", "Loading...") : t("تحميل ملف PDF 📥", "Download PDF 📥")}</span>
               </Button>
+
+              {/* PNG Download Button */}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDownloadImage}
+                className="gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50 font-bold h-9 text-xs"
+              >
+                <ImageIcon className="h-3.5 w-3.5 text-emerald-600" />
+                <span>{t("تحميل صورة 🖼️", "Download PNG")}</span>
+              </Button>
+
+              {/* Print / Save as PDF Button */}
+              <Button
+                type="button"
+                onClick={handlePrint}
+                variant="outline"
+                className="gap-1.5 border-slate-300 text-slate-800 hover:bg-slate-50 font-bold h-9 text-xs"
+              >
+                <Printer className="h-3.5 w-3.5 text-slate-600" />
+                <span>{t("طباعة / حفظ PDF 📄", "Print / Save PDF")}</span>
+              </Button>
+
+              {/* Open WhatsApp Options Tab */}
               <Button
                 type="button"
                 variant="outline"
@@ -596,7 +744,7 @@ export function ExportDocumentModal({
                 className="gap-1.5 border-emerald-300 text-emerald-800 hover:bg-emerald-50 font-bold h-9 text-xs"
               >
                 <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
-                <span>{t("إرسال واتساب 💬", "Send WhatsApp 💬")}</span>
+                <span>{t("خيارات الواتساب 💬", "WhatsApp Options 💬")}</span>
               </Button>
             </div>
           </div>
