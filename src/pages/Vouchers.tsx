@@ -53,9 +53,14 @@ import {
   FileText,
   BadgeDollarSign,
   UserCheck,
+  Share2,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { LocalVoucher, LocalContact } from "@/lib/localStore";
+import {
+  ExportDocumentModal,
+  type ExportableFinancialDoc,
+} from "@/components/ExportDocumentModal";
 
 export default function VouchersPage() {
   const { isRtl, t } = useLanguage();
@@ -74,7 +79,7 @@ export default function VouchersPage() {
 
   // Modal dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [selectedVoucherForPrint, setSelectedVoucherForPrint] = useState<LocalVoucher | null>(null);
+  const [selectedVoucherForExport, setSelectedVoucherForExport] = useState<ExportableFinancialDoc | null>(null);
   const [voucherToDelete, setVoucherToDelete] = useState<LocalVoucher | null>(null);
 
   // Form states for creating a voucher
@@ -88,6 +93,44 @@ export default function VouchersPage() {
   const [referenceNo, setReferenceNo] = useState("");
   const [description, setDescription] = useState("");
   const [receivedBy, setReceivedBy] = useState("مكاشفي");
+
+  const getAccountName = (accId: number) => {
+    return accounts.find((a) => a.id === accId)?.name ?? `حساب رقم ${accId}`;
+  };
+
+  const getPaymentMethodLabel = (method: string) => {
+    switch (method) {
+      case "cash":
+        return t("نقداً (كاش)", "Cash");
+      case "transfer":
+        return t("تحويل بنكي", "Bank Transfer");
+      case "cheque":
+        return t("شيك بنكي", "Cheque");
+      case "card":
+        return t("بطاقة مدى / ائتمان", "Card");
+      default:
+        return method;
+    }
+  };
+
+  const openExportModal = (v: LocalVoucher) => {
+    setSelectedVoucherForExport({
+      type: "voucher",
+      id: v.id,
+      subType: v.type,
+      title: v.type === "receipt" ? "سند قبض مالي معتمد" : "سند صرف مالي معتمد",
+      number: v.number,
+      referenceNo: v.referenceNo,
+      date: v.date,
+      amount: v.amount,
+      partyName: v.contactName || (v.type === "receipt" ? "استلمنا من المكرم" : "يُصرف إلى المكرم"),
+      contactId: v.contactId,
+      accountName: getAccountName(v.accountId),
+      paymentMethod: getPaymentMethodLabel(v.paymentMethod),
+      description: v.description,
+      receivedBy: v.receivedBy || "مكاشفي",
+    });
+  };
 
   // Mutations
   const createMutation = (trpc as any).vouchers.create.useMutation({
@@ -105,9 +148,9 @@ export default function VouchersPage() {
       setCreateDialogOpen(false);
       resetForm();
 
-      // Offer immediate print preview
+      // Offer immediate export & share modal
       if (newVoucher) {
-        setSelectedVoucherForPrint(newVoucher);
+        openExportModal(newVoucher);
       }
     },
     onError: (err: any) => {
@@ -231,24 +274,6 @@ export default function VouchersPage() {
     };
   }, [vouchers]);
 
-  const getAccountName = (accId: number) => {
-    return accounts.find((a) => a.id === accId)?.name ?? `حساب رقم ${accId}`;
-  };
-
-  const getPaymentMethodLabel = (method: string) => {
-    switch (method) {
-      case "cash":
-        return t("نقداً (كاش)", "Cash");
-      case "transfer":
-        return t("تحويل بنكي", "Bank Transfer");
-      case "cheque":
-        return t("شيك بنكي", "Cheque");
-      case "card":
-        return t("بطاقة مدى / ائتمان", "Card");
-      default:
-        return method;
-    }
-  };
 
   return (
     <Layout>
@@ -546,12 +571,12 @@ export default function VouchersPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() => setSelectedVoucherForPrint(v)}
-                                className="h-8 gap-1.5 px-2.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-200"
-                                title={t("معاينة وطباعة السند", "Preview & Print Voucher")}
+                                onClick={() => openExportModal(v)}
+                                className="h-8 gap-1.5 px-2.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border-emerald-300 font-semibold shadow-2xs"
+                                title={t("تصدير السند PDF ومشاركة عبر الواتساب", "Export Voucher PDF & Share via WhatsApp")}
                               >
-                                <Printer className="h-3.5 w-3.5" />
-                                <span className="text-xs">{t("طباعة", "Print")}</span>
+                                <Share2 className="h-3.5 w-3.5" />
+                                <span className="text-xs">{t("تصدير ومشاركة", "Export & Share")}</span>
                               </Button>
                               <Button
                                 size="icon"
@@ -800,183 +825,12 @@ export default function VouchersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* ── Dialog: Official Printable Voucher Slip ── */}
-      <Dialog
-        open={Boolean(selectedVoucherForPrint)}
-        onOpenChange={(open) => !open && setSelectedVoucherForPrint(null)}
-      >
-        <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-4 sm:p-6" dir="rtl">
-          <div className="flex items-center justify-between border-b pb-3 print:hidden">
-            <DialogTitle className="text-base font-bold flex items-center gap-2">
-              <Printer className="h-5 w-5 text-emerald-600" />
-              <span>
-                {selectedVoucherForPrint?.type === "receipt"
-                  ? t("معاينة سند القبض المالي الرسمي", "Official Receipt Voucher Slip")
-                  : t("معاينة سند الصرف المالي الرسمي", "Official Payment Voucher Slip")}
-              </span>
-            </DialogTitle>
-            <div className="flex gap-2">
-              <Button
-                onClick={() => window.print()}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2 shadow-sm"
-              >
-                <Printer className="h-4 w-4" />
-                {t("طباعة السند 🖨️", "Print Voucher 🖨️")}
-              </Button>
-            </div>
-          </div>
-
-          {selectedVoucherForPrint && (
-            <div
-              id="printable-voucher-document"
-              className="bg-white text-slate-900 p-6 sm:p-8 rounded-xl border-2 border-slate-300 shadow-sm space-y-6 my-2 text-right relative font-sans"
-            >
-              {/* Header with Company Logo & Info */}
-              <div className="flex items-start justify-between border-b-2 border-slate-800 pb-5">
-                <div className="space-y-1 text-right">
-                  <div className="flex items-center gap-2">
-                    <div className="h-10 w-10 rounded-xl bg-emerald-700 text-white font-bold flex items-center justify-center text-xl shadow-xs">
-                      ك
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-bold text-slate-900 leading-tight">
-                        {company?.name || "شركة كاف برو للحلول الإدارية والمالية"}
-                      </h2>
-                      <p className="text-xs text-slate-500 font-medium">
-                        {company?.nameEn || "KAF PRO ERP & Financial Solutions Co."}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-slate-600 space-y-0.5 pt-1">
-                    <p>السجل التجاري: <span className="font-mono font-semibold">{company?.crNumber || "1010789456"}</span> | الرقم الضريبي: <span className="font-mono font-semibold">{company?.taxNumber || "310456789000003"}</span></p>
-                    <p>{company?.address || "طريق الملك فهد، حي الصحافة"} - {company?.city || "الرياض، المملكة العربية السعودية"}</p>
-                    <p>هاتف: <span className="font-mono">{company?.phone || "+966 50 123 4567"}</span> | بريد: {company?.email || "finance@kaf-pro.com"}</p>
-                  </div>
-                </div>
-
-                <div className="text-left space-y-1.5 shrink-0">
-                  <div
-                    className={cn(
-                      "px-4 py-1.5 rounded-lg text-sm font-extrabold uppercase border-2 text-center",
-                      selectedVoucherForPrint.type === "receipt"
-                        ? "bg-emerald-50 text-emerald-800 border-emerald-600"
-                        : "bg-rose-50 text-rose-800 border-rose-600"
-                    )}
-                  >
-                    {selectedVoucherForPrint.type === "receipt" ? "سند قبض مالي" : "سند صرف مالي"}
-                    <div className="text-[10px] font-normal tracking-wider">
-                      {selectedVoucherForPrint.type === "receipt" ? "RECEIPT VOUCHER" : "PAYMENT VOUCHER"}
-                    </div>
-                  </div>
-                  <div className="border border-slate-300 rounded p-2 text-center bg-slate-50 text-xs font-mono space-y-0.5">
-                    <div>رقم السند: <strong className="text-sm font-bold text-slate-900">{selectedVoucherForPrint.number}</strong></div>
-                    <div>التاريخ: <strong>{selectedVoucherForPrint.date}</strong></div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Amount Highlight Box */}
-              <div
-                className={cn(
-                  "flex items-center justify-between p-4 rounded-xl border-2",
-                  selectedVoucherForPrint.type === "receipt"
-                    ? "bg-emerald-50/60 border-emerald-300"
-                    : "bg-rose-50/60 border-rose-300"
-                )}
-              >
-                <div>
-                  <span className="text-xs font-semibold text-slate-600 block mb-0.5">المبلغ الإجمالي المستحق:</span>
-                  <span className="text-2xl sm:text-3xl font-extrabold font-mono text-slate-900">
-                    {formatMoney(selectedVoucherForPrint.amount)}{" "}
-                    <span className="text-sm font-bold text-slate-700">ريال سعودي (SAR)</span>
-                  </span>
-                </div>
-                <div className="text-left">
-                  <span className="text-xs text-slate-500 block">طريقة السداد:</span>
-                  <span className="text-sm font-bold text-slate-800">
-                    {getPaymentMethodLabel(selectedVoucherForPrint.paymentMethod)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Voucher Content Table */}
-              <div className="border-2 border-slate-300 rounded-xl overflow-hidden text-sm">
-                <div className="grid grid-cols-1 divide-y divide-slate-200">
-                  {/* Party */}
-                  <div className="grid grid-cols-4 p-3 bg-slate-50/50">
-                    <span className="font-bold text-slate-700 col-span-1">
-                      {selectedVoucherForPrint.type === "receipt" ? "استلمنا من المكرم:" : "يُصرف إلى المكرم:"}
-                    </span>
-                    <span className="col-span-3 font-semibold text-slate-900">
-                      {selectedVoucherForPrint.contactName || "طرف خارجي عام"}
-                    </span>
-                  </div>
-
-                  {/* Tafqeet words */}
-                  <div className="grid grid-cols-4 p-3">
-                    <span className="font-bold text-slate-700 col-span-1">المبلغ كتابة:</span>
-                    <span className="col-span-3 font-bold text-emerald-800">
-                      {numberToArabicWords(selectedVoucherForPrint.amount)}
-                    </span>
-                  </div>
-
-                  {/* Reason / Description */}
-                  <div className="grid grid-cols-4 p-3 bg-slate-50/50">
-                    <span className="font-bold text-slate-700 col-span-1">وذلك عن / البيان:</span>
-                    <span className="col-span-3 text-slate-900 leading-relaxed font-medium">
-                      {selectedVoucherForPrint.description}
-                    </span>
-                  </div>
-
-                  {/* Account & Reference */}
-                  <div className="grid grid-cols-4 p-3">
-                    <span className="font-bold text-slate-700 col-span-1">الحساب المالي:</span>
-                    <div className="col-span-3 flex flex-wrap gap-4 text-slate-800">
-                      <span><strong>الحساب:</strong> {getAccountName(selectedVoucherForPrint.accountId)}</span>
-                      {selectedVoucherForPrint.referenceNo && (
-                        <span><strong>رقم المرجع / الشيك:</strong> {selectedVoucherForPrint.referenceNo}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Signatures & Seal Section */}
-              <div className="pt-6 border-t-2 border-slate-300 grid grid-cols-4 gap-4 text-center">
-                <div className="space-y-8">
-                  <p className="text-xs font-bold text-slate-700">المستلم</p>
-                  <p className="text-xs font-medium text-slate-500 border-b border-dashed border-slate-400 pb-1">
-                    {selectedVoucherForPrint.receivedBy || "مكاشفي"}
-                  </p>
-                </div>
-                <div className="space-y-8">
-                  <p className="text-xs font-bold text-slate-700">أمين الصندوق / المحاسب</p>
-                  <p className="text-xs font-medium text-slate-500 border-b border-dashed border-slate-400 pb-1">
-                    قسم الحسابات
-                  </p>
-                </div>
-                <div className="space-y-8">
-                  <p className="text-xs font-bold text-slate-700">المدير المالي / الاعتماد</p>
-                  <p className="text-xs font-medium text-slate-500 border-b border-dashed border-slate-400 pb-1">
-                    معتمد
-                  </p>
-                </div>
-                <div className="space-y-3 flex flex-col items-center">
-                  <p className="text-xs font-bold text-slate-700">الختم الرسمي</p>
-                  <div className="h-16 w-16 rounded-full border-2 border-emerald-600/40 border-dashed flex items-center justify-center text-[10px] text-emerald-800 font-bold p-1">
-                    ختم الاعتماد
-                  </div>
-                </div>
-              </div>
-
-              {/* Bottom Notice */}
-              <div className="text-[10px] text-center text-slate-400 border-t pt-3">
-                تم استخراج هذا السند إلكترونياً من نظام كاف برو المالي والمحاسبي (KAF PRO ERP) - يعتبر السند سارياً بالاعتماد الرسمي.
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* ── Dialog: Export & Share Document Modal ── */}
+      <ExportDocumentModal
+        open={Boolean(selectedVoucherForExport)}
+        onOpenChange={(open) => !open && setSelectedVoucherForExport(null)}
+        document={selectedVoucherForExport}
+      />
 
       {/* ── AlertDialog: Delete Confirmation ── */}
       <AlertDialog

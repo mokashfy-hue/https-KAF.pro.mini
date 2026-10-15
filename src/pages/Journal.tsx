@@ -31,8 +31,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { formatMoney, todayISO } from "@/lib/finance";
-import { CheckCircle2, Plus, Trash2, XCircle } from "lucide-react";
+import { CheckCircle2, Plus, Trash2, XCircle, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  ExportDocumentModal,
+  type ExportableFinancialDoc,
+} from "@/components/ExportDocumentModal";
 
 type Line = {
   accountId: number | null;
@@ -53,10 +57,36 @@ export default function JournalPage() {
   const [description, setDescription] = useState("");
   const [lines, setLines] = useState<Line[]>([emptyLine(), emptyLine()]);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [exportDoc, setExportDoc] = useState<ExportableFinancialDoc | null>(null);
 
   const totalDebit = lines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0);
   const totalCredit = lines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0);
   const balanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.005;
+
+  const accName = (id: number) => accounts?.find((a) => a.id === id)?.name ?? "";
+
+  const openExportModal = (entry: any) => {
+    const totalDebitAmt = entry.lines.reduce((s: number, l: any) => s + (parseFloat(l.debit) || 0), 0);
+    setExportDoc({
+      type: "journal_entry",
+      id: entry.id,
+      subType: "journal",
+      title: "سند قيد محاسبي معتمد (Journal Voucher)",
+      number: entry.reference || `JV-${String(entry.id).padStart(4, "0")}`,
+      referenceNo: entry.reference || undefined,
+      date: String(entry.date),
+      amount: totalDebitAmt,
+      partyName: "قسم الحسابات والمالية",
+      description: entry.description || "قيد محاسبي معتمد بالدفاتر",
+      receivedBy: "مكاشفي",
+      lines: entry.lines.map((l: any) => ({
+        accountName: accName(l.accountId),
+        debit: l.debit,
+        credit: l.credit,
+        description: l.description || undefined,
+      })),
+    });
+  };
 
   const createMut = trpc.finance.journal.create.useMutation({
     onSuccess: () => {
@@ -82,7 +112,6 @@ export default function JournalPage() {
     onError: (e) => toast.error(e.message),
   });
 
-  const accName = (id: number) => accounts?.find((a) => a.id === id)?.name ?? "";
 
   const submit = () => {
     if (!balanced) return toast.error("القيد غير متوازن — يجب تساوي المدين والدائن");
@@ -131,13 +160,23 @@ export default function JournalPage() {
                     </div>
                     <div className="text-xs text-muted-foreground">{String(e.date)}</div>
                   </div>
-                  <button
-                    className="p-2 text-muted-foreground hover:text-rose-600 min-h-[44px]"
-                    onClick={() => setDeletingId(e.id)}
-                    aria-label="حذف القيد"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg min-h-[44px]"
+                      onClick={() => openExportModal(e)}
+                      aria-label="تصدير ومشاركة القيد"
+                      title="تصدير سند القيد PDF ومشاركة عبر الواتساب"
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      className="p-2 text-muted-foreground hover:text-rose-600 min-h-[44px]"
+                      onClick={() => setDeletingId(e.id)}
+                      aria-label="حذف القيد"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 </div>
                 <div className="rounded-xl border overflow-hidden">
                   <div className="grid grid-cols-[1fr_90px_90px] bg-muted/60 px-3 py-2 text-xs font-semibold text-muted-foreground">
@@ -314,6 +353,12 @@ export default function JournalPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <ExportDocumentModal
+        open={Boolean(exportDoc)}
+        onOpenChange={(open) => !open && setExportDoc(null)}
+        document={exportDoc}
+      />
     </Layout>
   );
 }

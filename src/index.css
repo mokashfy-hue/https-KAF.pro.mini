@@ -77,3 +77,50 @@
     @apply bg-background text-foreground;
   }
 }
+
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* Hide app navigation, headers, footers, close buttons, and tabs */
+  header, footer, aside, nav, .print\:hidden, [role="dialog"] > button:last-child {
+    display: none !important;
+  }
+
+  /* Clean up dialog background when printing */
+  [data-radix-portal] {
+    position: static !important;
+  }
+
+  div[role="dialog"] {
+    position: static !important;
+    border: none !important;
+    box-shadow: none !important;
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    transform: none !important;
+  }
+
+  .print-document-container {
+    box-shadow: none !important;
+    border: 2px solid #334155 !important;
+    margin: 0 auto !important;
+    padding: 20px !important;
+    width: 100% !important;
+    max-width: 800px !important;
+    page-break-inside: avoid !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}

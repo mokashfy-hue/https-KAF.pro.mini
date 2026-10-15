@@ -20,8 +20,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatMoney } from "@/lib/finance";
 import { cn } from "@/lib/utils";
-import { ArrowDownLeft, ArrowUpRight, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Pencil, Plus, Trash2, Share2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  ExportDocumentModal,
+  type ExportableFinancialDoc,
+} from "@/components/ExportDocumentModal";
 
 type Filter = "all" | "expense" | "income";
 
@@ -31,10 +35,12 @@ export default function TransactionsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<TxLike | null>(null);
   const [deleting, setDeleting] = useState<TxLike | null>(null);
+  const [exportDoc, setExportDoc] = useState<ExportableFinancialDoc | null>(null);
 
   const utils = trpc.useUtils();
   const { data: txs, isLoading } = trpc.finance.transactions.list.useQuery({ limit: 300 });
   const { data: accounts } = trpc.finance.accounts.list.useQuery();
+  const { data: contacts = [] } = (trpc as any).contacts.list.useQuery();
 
   useEffect(() => {
     if (params.get("add") === "1") {
@@ -61,6 +67,29 @@ export default function TransactionsPage() {
   );
 
   const accName = (id: number) => accounts?.find((a) => a.id === id)?.name ?? "";
+
+  const openExportModal = (t: TxLike) => {
+    const isIncome = t.kind === "income";
+    const matchedContact = (t as any).contactId ? contacts.find((c: any) => c.id === (t as any).contactId) : null;
+    const partyName = matchedContact?.name || (isIncome ? "العميل المستلم منه" : "الجهة المصروف لها");
+    setExportDoc({
+      type: "transaction",
+      id: t.id,
+      subType: t.kind,
+      title: isIncome ? "إشعار تحصيل وتوريد مالي (إيراد)" : "إشعار صرف مالي (مصروف)",
+      number: `TX-${String(t.id).padStart(5, "0")}`,
+      date: String(t.date),
+      amount: t.amount,
+      partyName,
+      partyPhone: matchedContact?.phone,
+      contactId: (t as any).contactId,
+      accountName: accName(t.accountId),
+      category: t.category,
+      paymentMethod: "نقداً / حساب بنكي",
+      description: t.description || `حركة مالية - ${t.category}`,
+      receivedBy: "مكاشفي",
+    });
+  };
 
   return (
     <Layout onAdd={() => { setEditing(null); setDialogOpen(true); }}>
@@ -144,6 +173,14 @@ export default function TransactionsPage() {
                     {t.kind === "income" ? "+" : "−"}{formatMoney(t.amount)}
                   </div>
                   <button
+                    className="p-2 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg min-h-[44px]"
+                    onClick={() => openExportModal(t)}
+                    aria-label="تصدير ومشاركة السند"
+                    title="تصدير السند PDF ومشاركة عبر الواتساب"
+                  >
+                    <Share2 className="h-4 w-4" />
+                  </button>
+                  <button
                     className="p-2 text-muted-foreground hover:text-foreground min-h-[44px]"
                     onClick={() => { setEditing(t); setDialogOpen(true); }}
                     aria-label="تعديل"
@@ -165,6 +202,12 @@ export default function TransactionsPage() {
       </div>
 
       <TransactionDialog open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
+
+      <ExportDocumentModal
+        open={Boolean(exportDoc)}
+        onOpenChange={(open) => !open && setExportDoc(null)}
+        document={exportDoc}
+      />
 
       <AlertDialog open={!!deleting} onOpenChange={(v) => !v && setDeleting(null)}>
         <AlertDialogContent>
